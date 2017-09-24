@@ -135,7 +135,7 @@ public class ElasticsearchService {
 				.endObject();
 
 		PutMappingResponse putMappingResponse = indicesAdminClient
-				.preparePutMapping("wikidata-index").setType("wikidata-entity")
+				.preparePutMapping("wikidata-index-2").setType("wikidata-entity")
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
@@ -156,7 +156,7 @@ public class ElasticsearchService {
 				.endObject();
 
 		PutMappingResponse putMappingResponse = indicesAdminClient
-				.preparePutMapping("wikidata-index").setType("wikidata-claim")
+				.preparePutMapping("wikidata-index-2").setType("wikidata-claim")
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
@@ -253,7 +253,7 @@ public class ElasticsearchService {
 					.field("label", label).endObject();
 
 			IndexRequest indexRequest = Requests.indexRequest()
-					.index("wikidata-index").type("wikidata-entity")
+					.index("wikidata-index-2").type("wikidata-entity")
 					.source(builder.string());
 			getBulkProcessor().add(indexRequest);
 		} catch (JSONException e) {
@@ -277,7 +277,7 @@ public class ElasticsearchService {
 					.endObject();
 
 			getBulkProcessor().add(
-					Requests.indexRequest().index("wikidata-index")
+					Requests.indexRequest().index("wikidata-index-2")
 							.type("wikidata-entity").source(builder.string()));
 		}
 	}
@@ -296,7 +296,7 @@ public class ElasticsearchService {
 						propertyId, snakArray);
 				if (builder != null) {
 					indexRequest = Requests.indexRequest()
-							.index("wikidata-index").type("wikidata-claim")
+							.index("wikidata-index-2").type("wikidata-claim")
 							.source(builder.string());
 				}
 				getBulkProcessor().add(indexRequest);
