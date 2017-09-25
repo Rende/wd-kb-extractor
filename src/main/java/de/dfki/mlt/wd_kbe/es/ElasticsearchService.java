@@ -39,6 +39,7 @@ import org.json.JSONObject;
 
 import com.google.common.collect.ImmutableList;
 
+import de.dfki.mlt.wd_kbe.App;
 import de.dfki.mlt.wd_kbe.preferences.Config;
 
 public class ElasticsearchService {
@@ -123,27 +124,36 @@ public class ElasticsearchService {
 
 	private boolean putMappingForEntity(IndicesAdminClient indicesAdminClient)
 			throws IOException {
-		XContentBuilder mappingBuilder = XContentFactory.jsonBuilder()
-				.startObject().startObject("wikidata-entity")
+		XContentBuilder mappingBuilder = XContentFactory
+				.jsonBuilder()
+				.startObject()
+				.startObject(
+						Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
 				.startObject("properties").startObject("id")
 				.field("type", "string").field("index", "not_analyzed")
 				.endObject().startObject("type").field("type", "string")
 				.field("index", "not_analyzed").endObject()
 				.startObject("label").field("type", "string").endObject()
 				.endObject() // properties
-				.endObject()// document Type
+				.endObject()// documentType
 				.endObject();
 
 		PutMappingResponse putMappingResponse = indicesAdminClient
-				.preparePutMapping("wikidata-index-2").setType("wikidata-entity")
+				.preparePutMapping(
+						Config.getInstance().getString(Config.INDEX_NAME))
+				.setType(
+						Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
 
 	private boolean putMappingForClaim(IndicesAdminClient indicesAdminClient)
 			throws IOException {
-		XContentBuilder mappingBuilder = XContentFactory.jsonBuilder()
-				.startObject().startObject("wikidata-claim")
+		XContentBuilder mappingBuilder = XContentFactory
+				.jsonBuilder()
+				.startObject()
+				.startObject(
+						Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
 				.startObject("properties").startObject("entity_id")
 				.field("type", "string").field("index", "not_analyzed")
 				.endObject().startObject("property_id").field("type", "string")
@@ -156,7 +166,9 @@ public class ElasticsearchService {
 				.endObject();
 
 		PutMappingResponse putMappingResponse = indicesAdminClient
-				.preparePutMapping("wikidata-index-2").setType("wikidata-claim")
+				.preparePutMapping(
+						Config.getInstance().getString(Config.INDEX_NAME))
+				.setType(Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
@@ -195,24 +207,27 @@ public class ElasticsearchService {
 						@Override
 						public void beforeBulk(long executionId,
 								BulkRequest request) {
-							System.out
-									.println("(Bulk Loading) Number of request processed: "
-											+ request.numberOfActions());
+							App.logger.info("Number of request processed: "
+									+ request.numberOfActions());
 						}
 
 						@Override
 						public void afterBulk(long executionId,
 								BulkRequest request, BulkResponse response) {
 							if (response.hasFailures()) {
-
-								System.out.println("Error: "
-										+ response.buildFailureMessage());
+								App.logger
+										.error("Elasticsearch Service getBulkProcessor() "
+												+ response
+														.buildFailureMessage());
 							}
 						}
 
 						@Override
 						public void afterBulk(long executionId,
 								BulkRequest request, Throwable failure) {
+							App.logger
+									.error("Elasticsearch Service getBulkProcessor()"
+											+ failure.getMessage());
 
 						}
 					})
@@ -252,9 +267,11 @@ public class ElasticsearchService {
 					.startObject().field("id", id).field("type", type)
 					.field("label", label).endObject();
 
-			IndexRequest indexRequest = Requests.indexRequest()
-					.index("wikidata-index-2").type("wikidata-entity")
-					.source(builder.string());
+			IndexRequest indexRequest = Requests
+					.indexRequest()
+					.index(Config.getInstance().getString(Config.INDEX_NAME))
+					.type(Config.getInstance().getString(
+							Config.ENTITY_TYPE_NAME)).source(builder.string());
 			getBulkProcessor().add(indexRequest);
 		} catch (JSONException e) {
 			// e.printStackTrace();
@@ -277,8 +294,12 @@ public class ElasticsearchService {
 					.endObject();
 
 			getBulkProcessor().add(
-					Requests.indexRequest().index("wikidata-index-2")
-							.type("wikidata-entity").source(builder.string()));
+					Requests.indexRequest()
+							.index(Config.getInstance().getString(
+									Config.INDEX_NAME))
+							.type(Config.getInstance().getString(
+									Config.ENTITY_TYPE_NAME))
+							.source(builder.string()));
 		}
 	}
 
@@ -295,8 +316,12 @@ public class ElasticsearchService {
 				XContentBuilder builder = buildClaimRequest(entityId,
 						propertyId, snakArray);
 				if (builder != null) {
-					indexRequest = Requests.indexRequest()
-							.index("wikidata-index-2").type("wikidata-claim")
+					indexRequest = Requests
+							.indexRequest()
+							.index(Config.getInstance().getString(
+									Config.INDEX_NAME))
+							.type(Config.getInstance().getString(
+									Config.CLAIM_TYPE_NAME))
 							.source(builder.string());
 				}
 				getBulkProcessor().add(indexRequest);

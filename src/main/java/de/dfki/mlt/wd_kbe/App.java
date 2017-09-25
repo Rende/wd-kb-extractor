@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorInputStream;
 import org.apache.commons.compress.compressors.CompressorStreamFactory;
+import org.apache.log4j.Logger;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -18,15 +19,19 @@ import de.dfki.mlt.wd_kbe.es.ElasticsearchService;
 import de.dfki.mlt.wd_kbe.preferences.Config;
 
 /**
- * Hello world!
+ * @author Aydan Rende, DFKI
  *
  */
 public class App {
-	public static void main(String[] args) {
+	public static final Logger logger = Logger.getLogger(App.class);
 
+	public static void main(String[] args) {
+		long start = System.currentTimeMillis();
+		logger.info("Wikidata knowledgebase extraction started.");
 		ElasticsearchService esService = new ElasticsearchService();
 		try {
-			esService.checkAndCreateIndex("wikidata-index-2");
+			esService.checkAndCreateIndex(Config.getInstance().getString(
+					Config.INDEX_NAME));
 
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
@@ -58,6 +63,10 @@ public class App {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+		long elapsedTimeMillis = System.currentTimeMillis() - start;
+		float elapsedTimeHour = elapsedTimeMillis / (60 * 60 * 1000F);
+		logger.info("Time spent in hours: " + elapsedTimeHour);
+
 	}
 
 	public static BufferedReader getBufferedReaderForCompressedFile(
