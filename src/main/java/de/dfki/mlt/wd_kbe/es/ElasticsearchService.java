@@ -34,12 +34,12 @@ import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.json.JSONArray;
-import org.json.JSONException;
 import org.json.JSONObject;
 
 import com.google.common.collect.ImmutableList;
 
 import de.dfki.mlt.wd_kbe.App;
+import de.dfki.mlt.wd_kbe.Helper;
 import de.dfki.mlt.wd_kbe.preferences.Config;
 
 public class ElasticsearchService {
@@ -138,6 +138,7 @@ public class ElasticsearchService {
 				.endObject()// documentType
 				.endObject();
 
+		App.logger.info("Mapping for entity:" + mappingBuilder.string());
 		PutMappingResponse putMappingResponse = indicesAdminClient
 				.preparePutMapping(
 						Config.getInstance().getString(Config.INDEX_NAME))
@@ -164,7 +165,7 @@ public class ElasticsearchService {
 				.endObject() // properties
 				.endObject()// document Type
 				.endObject();
-
+		App.logger.info("Mapping for claim:" + mappingBuilder.string());
 		PutMappingResponse putMappingResponse = indicesAdminClient
 				.preparePutMapping(
 						Config.getInstance().getString(Config.INDEX_NAME))
@@ -226,7 +227,7 @@ public class ElasticsearchService {
 						public void afterBulk(long executionId,
 								BulkRequest request, Throwable failure) {
 							App.logger
-									.error("Elasticsearch Service getBulkProcessor()"
+									.error("Elasticsearch Service getBulkProcessor() "
 											+ failure.getMessage());
 
 						}
@@ -246,10 +247,6 @@ public class ElasticsearchService {
 	public void insertEntity(JSONObject jsonObj) {
 		try {
 			createEntityIndexRequest(jsonObj);
-		} catch (JSONException | IOException e) {
-			e.printStackTrace();
-		}
-		try {
 			createEntityIndexRequestFromAliases(jsonObj);
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -259,7 +256,8 @@ public class ElasticsearchService {
 	public void createEntityIndexRequest(JSONObject jsonObj) throws IOException {
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
-		try {
+		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("labels"),
+				"en")) {
 			JSONObject labelObj = jsonObj.getJSONObject("labels")
 					.getJSONObject("en");
 			String label = labelObj.getString("value");
@@ -273,8 +271,6 @@ public class ElasticsearchService {
 					.type(Config.getInstance().getString(
 							Config.ENTITY_TYPE_NAME)).source(builder.string());
 			getBulkProcessor().add(indexRequest);
-		} catch (JSONException e) {
-			// e.printStackTrace();
 		}
 
 	}
@@ -283,23 +279,26 @@ public class ElasticsearchService {
 			throws IOException {
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
-		JSONArray aliasArr = jsonObj.getJSONObject("aliases")
-				.getJSONArray("en");
-		String label = "";
-		XContentBuilder builder = null;
-		for (Object aliasObj : aliasArr) {
-			label = ((JSONObject) aliasObj).getString("value");
-			builder = XContentFactory.jsonBuilder().startObject()
-					.field("id", id).field("type", type).field("label", label)
-					.endObject();
+		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
+				"en")) {
+			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
+					"en");
+			String label = "";
+			XContentBuilder builder = null;
+			for (Object aliasObj : aliasArr) {
+				label = ((JSONObject) aliasObj).getString("value");
+				builder = XContentFactory.jsonBuilder().startObject()
+						.field("id", id).field("type", type)
+						.field("label", label).endObject();
 
-			getBulkProcessor().add(
-					Requests.indexRequest()
-							.index(Config.getInstance().getString(
-									Config.INDEX_NAME))
-							.type(Config.getInstance().getString(
-									Config.ENTITY_TYPE_NAME))
-							.source(builder.string()));
+				getBulkProcessor().add(
+						Requests.indexRequest()
+								.index(Config.getInstance().getString(
+										Config.INDEX_NAME))
+								.type(Config.getInstance().getString(
+										Config.ENTITY_TYPE_NAME))
+								.source(builder.string()));
+			}
 		}
 	}
 
@@ -335,40 +334,42 @@ public class ElasticsearchService {
 		JSONObject dataJson = new JSONObject();
 		String dataValue = "";
 		String dataType = "";
-
-		try {
+		if (Helper.checkAttributeAvailable(
+				((JSONObject) snakArray.get(0)).getJSONObject("mainsnak"),
+				"datavalue")) {
 			dataJson = ((JSONObject) snakArray.get(0))
 					.getJSONObject("mainsnak").getJSONObject("datavalue");
 			dataType = dataJson.getString("type");
-		} catch (JSONException e) {
-			// e.printStackTrace();
-		}
 
-		switch (dataType) {
-		case "string":
-			dataValue = dataJson.getString("value");
-			break;
-		case "wikibase-entityid":
-			dataValue = dataJson.getJSONObject("value").getString("id");
-			break;
-		case "globecoordinate":
-			dataValue = dataJson.getJSONObject("value").get("latitude") + " ; "
-					+ dataJson.getJSONObject("value").get("longitude");
-			break;
-		case "quantity":
-			dataValue = dataJson.getJSONObject("value").getString("amount")
-					+ " ; " + dataJson.getJSONObject("value").getString("unit");
-			break;
-		case "time":
-			dataValue = dataJson.getJSONObject("value").getString("time");
-			break;
-		default:
-			break;
+			switch (dataType) {
+			case "string":
+				dataValue = dataJson.getString("value");
+				break;
+			case "wikibase-entityid":
+				dataValue = dataJson.getJSONObject("value").getString("id");
+				break;
+			case "globecoordinate":
+				dataValue = dataJson.getJSONObject("value").get("latitude")
+						+ " ; "
+						+ dataJson.getJSONObject("value").get("longitude");
+				break;
+			case "quantity":
+				dataValue = dataJson.getJSONObject("value").getString("amount")
+						+ " ; "
+						+ dataJson.getJSONObject("value").getString("unit");
+				break;
+			case "time":
+				dataValue = dataJson.getJSONObject("value").getString("time");
+				break;
+			default:
+				break;
+			}
+			builder = XContentFactory.jsonBuilder().startObject()
+					.field("entity_id", entityId)
+					.field("property_id", propertyId)
+					.field("data_type", dataType)
+					.field("data_value", dataValue).endObject();
 		}
-		builder = XContentFactory.jsonBuilder().startObject()
-				.field("entity_id", entityId).field("property_id", propertyId)
-				.field("data_type", dataType).field("data_value", dataValue)
-				.endObject();
 		return builder;
 	}
 
