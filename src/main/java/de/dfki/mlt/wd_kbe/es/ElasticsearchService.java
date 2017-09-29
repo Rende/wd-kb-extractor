@@ -133,8 +133,11 @@ public class ElasticsearchService {
 				.field("type", "string").field("index", "not_analyzed")
 				.endObject().startObject("type").field("type", "string")
 				.field("index", "not_analyzed").endObject()
+				.startObject("org_label").field("type", "string")
+				.field("index", "not_analyzed").endObject()
 				.startObject("label").field("type", "string").endObject()
-				.endObject() // properties
+				.startObject("wikipedia_title").field("type", "string")
+				.field("index", "not_analyzed").endObject().endObject() // properties
 				.endObject()// documentType
 				.endObject();
 
@@ -161,8 +164,8 @@ public class ElasticsearchService {
 				.field("index", "not_analyzed").endObject()
 				.startObject("data_type").field("type", "string")
 				.field("index", "not_analyzed").endObject()
-				.startObject("data_value").field("type", "string").endObject()
-				.endObject() // properties
+				.startObject("data_value").field("type", "string")
+				.field("index", "not_analyzed").endObject().endObject() // properties
 				.endObject()// document Type
 				.endObject();
 		App.logger.info("Mapping for claim:" + mappingBuilder.string());
@@ -244,26 +247,26 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public void insertEntity(JSONObject jsonObj) {
-		try {
-			createEntityIndexRequest(jsonObj);
-			createEntityIndexRequestFromAliases(jsonObj);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-
 	public void createEntityIndexRequest(JSONObject jsonObj) throws IOException {
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
+		String wikipediaTitle = "";
+		String orgLabel = "";
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("labels"),
 				"en")) {
 			JSONObject labelObj = jsonObj.getJSONObject("labels")
 					.getJSONObject("en");
-			String label = labelObj.getString("value");
+			orgLabel = labelObj.getString("value");
+			if (Helper.checkAttributeAvailable(
+					jsonObj.getJSONObject("sitelinks"), "enwiki")) {
+				wikipediaTitle = jsonObj.getJSONObject("sitelinks")
+						.getJSONObject("enwiki").getString("title")
+						.replace(" ", "_");
+			}
 			XContentBuilder builder = XContentFactory.jsonBuilder()
 					.startObject().field("id", id).field("type", type)
-					.field("label", label).endObject();
+					.field("org_label", orgLabel).field("label", orgLabel)
+					.field("wikipedia_title", wikipediaTitle).endObject();
 
 			IndexRequest indexRequest = Requests
 					.indexRequest()
@@ -271,35 +274,32 @@ public class ElasticsearchService {
 					.type(Config.getInstance().getString(
 							Config.ENTITY_TYPE_NAME)).source(builder.string());
 			getBulkProcessor().add(indexRequest);
-		}
 
-	}
+			// if there are aliases, will be inserted as independent docs
+			if (Helper.checkAttributeAvailable(
+					jsonObj.getJSONObject("aliases"), "en")) {
+				JSONArray aliasArr = jsonObj.getJSONObject("aliases")
+						.getJSONArray("en");
+				String label = "";
+				for (Object aliasObj : aliasArr) {
+					label = ((JSONObject) aliasObj).getString("value");
+					builder = XContentFactory.jsonBuilder().startObject()
+							.field("id", id).field("type", type)
+							.field("org_label", orgLabel).field("label", label)
+							.field("wikipedia_title", wikipediaTitle)
+							.endObject();
 
-	private void createEntityIndexRequestFromAliases(JSONObject jsonObj)
-			throws IOException {
-		String type = jsonObj.getString("type");
-		String id = jsonObj.getString("id");
-		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
-				"en")) {
-			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
-					"en");
-			String label = "";
-			XContentBuilder builder = null;
-			for (Object aliasObj : aliasArr) {
-				label = ((JSONObject) aliasObj).getString("value");
-				builder = XContentFactory.jsonBuilder().startObject()
-						.field("id", id).field("type", type)
-						.field("label", label).endObject();
-
-				getBulkProcessor().add(
-						Requests.indexRequest()
-								.index(Config.getInstance().getString(
-										Config.INDEX_NAME))
-								.type(Config.getInstance().getString(
-										Config.ENTITY_TYPE_NAME))
-								.source(builder.string()));
+					getBulkProcessor().add(
+							Requests.indexRequest()
+									.index(Config.getInstance().getString(
+											Config.INDEX_NAME))
+									.type(Config.getInstance().getString(
+											Config.ENTITY_TYPE_NAME))
+									.source(builder.string()));
+				}
 			}
 		}
+
 	}
 
 	public void createClaimIndexRequest(JSONObject jsonObj) throws IOException {
@@ -350,12 +350,12 @@ public class ElasticsearchService {
 				break;
 			case "globecoordinate":
 				dataValue = dataJson.getJSONObject("value").get("latitude")
-						+ " ; "
+						+ ";"
 						+ dataJson.getJSONObject("value").get("longitude");
 				break;
 			case "quantity":
 				dataValue = dataJson.getJSONObject("value").getString("amount")
-						+ " ; "
+						+ ";"
 						+ dataJson.getJSONObject("value").getString("unit");
 				break;
 			case "time":
