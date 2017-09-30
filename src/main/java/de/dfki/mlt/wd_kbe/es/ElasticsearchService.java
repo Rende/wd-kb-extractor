@@ -257,8 +257,9 @@ public class ElasticsearchService {
 			JSONObject labelObj = jsonObj.getJSONObject("labels")
 					.getJSONObject("en");
 			orgLabel = labelObj.getString("value");
-			if (Helper.checkAttributeAvailable(
-					jsonObj.getJSONObject("sitelinks"), "enwiki")) {
+			if (Helper.checkAttributeAvailable(jsonObj, "sitelinks")
+					&& Helper.checkAttributeAvailable(
+							jsonObj.getJSONObject("sitelinks"), "enwiki")) {
 				wikipediaTitle = jsonObj.getJSONObject("sitelinks")
 						.getJSONObject("enwiki").getString("title")
 						.replace(" ", "_");
