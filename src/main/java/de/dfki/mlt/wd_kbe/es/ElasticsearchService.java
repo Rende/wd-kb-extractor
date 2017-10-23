@@ -257,47 +257,47 @@ public class ElasticsearchService {
 			JSONObject labelObj = jsonObj.getJSONObject("labels")
 					.getJSONObject("en");
 			orgLabel = labelObj.getString("value");
-			if (Helper.checkAttributeAvailable(jsonObj, "sitelinks")
-					&& Helper.checkAttributeAvailable(
-							jsonObj.getJSONObject("sitelinks"), "enwiki")) {
-				wikipediaTitle = jsonObj.getJSONObject("sitelinks")
-						.getJSONObject("enwiki").getString("title")
-						.replace(" ", "_");
-			}
-			XContentBuilder builder = XContentFactory.jsonBuilder()
-					.startObject().field("id", id).field("type", type)
-					.field("org_label", orgLabel).field("label", orgLabel)
-					.field("wikipedia_title", wikipediaTitle).endObject();
+		} else {
+			orgLabel = "no label";
+		}
+		if (Helper.checkAttributeAvailable(jsonObj, "sitelinks")
+				&& Helper.checkAttributeAvailable(
+						jsonObj.getJSONObject("sitelinks"), "enwiki")) {
+			wikipediaTitle = jsonObj.getJSONObject("sitelinks")
+					.getJSONObject("enwiki").getString("title")
+					.replace(" ", "_");
+		}
+		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
+				.field("id", id).field("type", type)
+				.field("org_label", orgLabel).field("label", orgLabel)
+				.field("wikipedia_title", wikipediaTitle).endObject();
 
-			IndexRequest indexRequest = Requests
-					.indexRequest()
-					.index(Config.getInstance().getString(Config.INDEX_NAME))
-					.type(Config.getInstance().getString(
-							Config.ENTITY_TYPE_NAME)).source(builder.string());
-			getBulkProcessor().add(indexRequest);
+		IndexRequest indexRequest = Requests.indexRequest()
+				.index(Config.getInstance().getString(Config.INDEX_NAME))
+				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
+				.source(builder.string());
+		getBulkProcessor().add(indexRequest);
 
-			// if there are aliases, will be inserted as independent docs
-			if (Helper.checkAttributeAvailable(
-					jsonObj.getJSONObject("aliases"), "en")) {
-				JSONArray aliasArr = jsonObj.getJSONObject("aliases")
-						.getJSONArray("en");
-				String label = "";
-				for (Object aliasObj : aliasArr) {
-					label = ((JSONObject) aliasObj).getString("value");
-					builder = XContentFactory.jsonBuilder().startObject()
-							.field("id", id).field("type", type)
-							.field("org_label", orgLabel).field("label", label)
-							.field("wikipedia_title", wikipediaTitle)
-							.endObject();
+		// if there are aliases, will be inserted as independent docs
+		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
+				"en")) {
+			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
+					"en");
+			String label = "";
+			for (Object aliasObj : aliasArr) {
+				label = ((JSONObject) aliasObj).getString("value");
+				builder = XContentFactory.jsonBuilder().startObject()
+						.field("id", id).field("type", type)
+						.field("org_label", orgLabel).field("label", label)
+						.field("wikipedia_title", wikipediaTitle).endObject();
 
-					getBulkProcessor().add(
-							Requests.indexRequest()
-									.index(Config.getInstance().getString(
-											Config.INDEX_NAME))
-									.type(Config.getInstance().getString(
-											Config.ENTITY_TYPE_NAME))
-									.source(builder.string()));
-				}
+				getBulkProcessor().add(
+						Requests.indexRequest()
+								.index(Config.getInstance().getString(
+										Config.INDEX_NAME))
+								.type(Config.getInstance().getString(
+										Config.ENTITY_TYPE_NAME))
+								.source(builder.string()));
 			}
 		}
 
