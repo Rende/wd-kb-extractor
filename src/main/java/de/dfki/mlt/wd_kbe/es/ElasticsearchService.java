@@ -141,7 +141,7 @@ public class ElasticsearchService {
 				.endObject()// documentType
 				.endObject();
 
-		App.logger.info("Mapping for entity:" + mappingBuilder.string());
+		App.logger.debug("Mapping for entity:" + mappingBuilder.string());
 		PutMappingResponse putMappingResponse = indicesAdminClient
 				.preparePutMapping(
 						Config.getInstance().getString(Config.INDEX_NAME))
@@ -168,7 +168,7 @@ public class ElasticsearchService {
 				.field("index", "not_analyzed").endObject().endObject() // properties
 				.endObject()// document Type
 				.endObject();
-		App.logger.info("Mapping for claim:" + mappingBuilder.string());
+		App.logger.debug("Mapping for claim:" + mappingBuilder.string());
 		PutMappingResponse putMappingResponse = indicesAdminClient
 				.preparePutMapping(
 						Config.getInstance().getString(Config.INDEX_NAME))
@@ -211,7 +211,7 @@ public class ElasticsearchService {
 						@Override
 						public void beforeBulk(long executionId,
 								BulkRequest request) {
-							App.logger.info("Number of request processed: "
+							App.logger.debug("Number of request processed: "
 									+ request.numberOfActions());
 						}
 

@@ -27,7 +27,7 @@ public class App {
 
 	public static void main(String[] args) {
 		long start = System.currentTimeMillis();
-		logger.info("Wikidata knowledgebase extraction started.");
+		logger.debug("Wikidata knowledgebase extraction started.");
 		ElasticsearchService esService = new ElasticsearchService();
 		try {
 			esService.checkAndCreateIndex(Config.getInstance().getString(
