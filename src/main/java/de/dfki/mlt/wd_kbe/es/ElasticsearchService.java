@@ -200,8 +200,8 @@ public class ElasticsearchService {
 	}
 
 	public void stopConnection() {
-		getClient().close();
 		getBulkProcessor().close();
+		getClient().close();
 	}
 
 	private BulkProcessor getBulkProcessor() {
@@ -247,9 +247,10 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public void createEntityIndexRequest(JSONObject jsonObj) throws IOException {
+	public void insertEntities(JSONObject jsonObj) throws IOException {
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
+		App.logger.debug("Entity type: " + type + " entity id: " + id);
 		String wikipediaTitle = "";
 		String orgLabel = "";
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("labels"),
@@ -267,6 +268,34 @@ public class ElasticsearchService {
 					.getJSONObject("enwiki").getString("title")
 					.replace(" ", "_");
 		}
+
+		IndexRequest indexRequest = createEntityIndexRequest(id, type,
+				orgLabel, wikipediaTitle);
+		getBulkProcessor().add(indexRequest);
+		// if there are aliases, will be inserted as independent docs
+		insertEntityAliases(jsonObj, id, type, wikipediaTitle);
+
+	}
+
+	public void insertEntityAliases(JSONObject jsonObj, String id, String type,
+			String wikipediaTitle) throws IOException {
+		IndexRequest indexRequest = new IndexRequest();
+		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
+				"en")) {
+			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
+					"en");
+			String label = "";
+			for (Object aliasObj : aliasArr) {
+				label = ((JSONObject) aliasObj).getString("value");
+				indexRequest = createEntityIndexRequest(id, type, label,
+						wikipediaTitle);
+				getBulkProcessor().add(indexRequest);
+			}
+		}
+	}
+
+	public IndexRequest createEntityIndexRequest(String id, String type,
+			String orgLabel, String wikipediaTitle) throws IOException {
 		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
 				.field("id", id).field("type", type)
 				.field("org_label", orgLabel).field("label", orgLabel)
@@ -276,34 +305,10 @@ public class ElasticsearchService {
 				.index(Config.getInstance().getString(Config.INDEX_NAME))
 				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
 				.source(builder.string());
-		getBulkProcessor().add(indexRequest);
-
-		// if there are aliases, will be inserted as independent docs
-		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
-				"en")) {
-			JSONArray aliasArr = jsonObj.getJSONObject("aliases").getJSONArray(
-					"en");
-			String label = "";
-			for (Object aliasObj : aliasArr) {
-				label = ((JSONObject) aliasObj).getString("value");
-				builder = XContentFactory.jsonBuilder().startObject()
-						.field("id", id).field("type", type)
-						.field("org_label", orgLabel).field("label", label)
-						.field("wikipedia_title", wikipediaTitle).endObject();
-
-				getBulkProcessor().add(
-						Requests.indexRequest()
-								.index(Config.getInstance().getString(
-										Config.INDEX_NAME))
-								.type(Config.getInstance().getString(
-										Config.ENTITY_TYPE_NAME))
-								.source(builder.string()));
-			}
-		}
-
+		return indexRequest;
 	}
 
-	public void createClaimIndexRequest(JSONObject jsonObj) throws IOException {
+	public void insertClaims(JSONObject jsonObj) throws IOException {
 		String entityType = jsonObj.getString("type");
 		String entityId = jsonObj.getString("id");
 		if (entityType.equals("item")) {
@@ -323,8 +328,8 @@ public class ElasticsearchService {
 							.type(Config.getInstance().getString(
 									Config.CLAIM_TYPE_NAME))
 							.source(builder.string());
+					getBulkProcessor().add(indexRequest);
 				}
-				getBulkProcessor().add(indexRequest);
 			}
 		}
 	}
@@ -373,5 +378,4 @@ public class ElasticsearchService {
 		}
 		return builder;
 	}
-
 }
