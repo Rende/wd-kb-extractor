@@ -270,15 +270,15 @@ public class ElasticsearchService {
 		}
 
 		IndexRequest indexRequest = createEntityIndexRequest(id, type,
-				orgLabel, wikipediaTitle);
+				orgLabel, orgLabel, wikipediaTitle);
 		getBulkProcessor().add(indexRequest);
 		// if there are aliases, will be inserted as independent docs
-		insertEntityAliases(jsonObj, id, type, wikipediaTitle);
+		insertEntityAliases(jsonObj, id, type, orgLabel, wikipediaTitle);
 
 	}
 
 	public void insertEntityAliases(JSONObject jsonObj, String id, String type,
-			String wikipediaTitle) throws IOException {
+			String orgLabel, String wikipediaTitle) throws IOException {
 		IndexRequest indexRequest = new IndexRequest();
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
 				"en")) {
@@ -287,18 +287,19 @@ public class ElasticsearchService {
 			String label = "";
 			for (Object aliasObj : aliasArr) {
 				label = ((JSONObject) aliasObj).getString("value");
-				indexRequest = createEntityIndexRequest(id, type, label,
-						wikipediaTitle);
+				indexRequest = createEntityIndexRequest(id, type, orgLabel,
+						label, wikipediaTitle);
 				getBulkProcessor().add(indexRequest);
 			}
 		}
 	}
 
 	public IndexRequest createEntityIndexRequest(String id, String type,
-			String orgLabel, String wikipediaTitle) throws IOException {
+			String orgLabel, String label, String wikipediaTitle)
+			throws IOException {
 		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
 				.field("id", id).field("type", type)
-				.field("org_label", orgLabel).field("label", orgLabel)
+				.field("org_label", orgLabel).field("label", label)
 				.field("wikipedia_title", wikipediaTitle).endObject();
 
 		IndexRequest indexRequest = Requests.indexRequest()

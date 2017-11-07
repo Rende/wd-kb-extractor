@@ -5,4 +5,5 @@
 .settings
 .classpath
 /dumpfiles/
+.log
 /wd-kb-extractor.log
