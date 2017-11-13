@@ -250,7 +250,6 @@ public class ElasticsearchService {
 	public void insertEntities(JSONObject jsonObj) throws IOException {
 		String type = jsonObj.getString("type");
 		String id = jsonObj.getString("id");
-		App.logger.debug("Entity type: " + type + " entity id: " + id);
 		String wikipediaTitle = "";
 		String orgLabel = "";
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("labels"),
