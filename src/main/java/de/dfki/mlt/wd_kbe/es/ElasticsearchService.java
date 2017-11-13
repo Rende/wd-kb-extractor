@@ -93,7 +93,7 @@ public class ElasticsearchService {
 		}
 		if (createIndex(indicesAdminClient, indexName)) {
 			result = putMappingForEntity(indicesAdminClient)
-					&& putMappingForClaim(indicesAdminClient);
+					&& putMappingForProperty(indicesAdminClient);
 		}
 		return result;
 	}
@@ -151,13 +151,13 @@ public class ElasticsearchService {
 		return putMappingResponse.isAcknowledged();
 	}
 
-	private boolean putMappingForClaim(IndicesAdminClient indicesAdminClient)
+	private boolean putMappingForProperty(IndicesAdminClient indicesAdminClient)
 			throws IOException {
 		XContentBuilder mappingBuilder = XContentFactory
 				.jsonBuilder()
 				.startObject()
 				.startObject(
-						Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
+						Config.getInstance().getString(Config.PROPERTY_TYPE_NAME))
 				.startObject("properties").startObject("entity_id")
 				.field("type", "string").field("index", "not_analyzed")
 				.endObject().startObject("property_id").field("type", "string")
@@ -172,7 +172,7 @@ public class ElasticsearchService {
 		PutMappingResponse putMappingResponse = indicesAdminClient
 				.preparePutMapping(
 						Config.getInstance().getString(Config.INDEX_NAME))
-				.setType(Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
+				.setType(Config.getInstance().getString(Config.PROPERTY_TYPE_NAME))
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
@@ -326,7 +326,7 @@ public class ElasticsearchService {
 							.index(Config.getInstance().getString(
 									Config.INDEX_NAME))
 							.type(Config.getInstance().getString(
-									Config.CLAIM_TYPE_NAME))
+									Config.PROPERTY_TYPE_NAME))
 							.source(builder.string());
 					getBulkProcessor().add(indexRequest);
 				}
