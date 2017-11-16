@@ -314,7 +314,7 @@ public class ElasticsearchService {
 							.index(Config.getInstance().getString(
 									Config.INDEX_NAME))
 							.type(Config.getInstance().getString(
-									Config.CLAIM_TYPE_NAME)).id(entityId)
+									Config.CLAIM_TYPE_NAME))
 							.source(builder.string());
 					getBulkProcessor().add(indexRequest);
 				}
