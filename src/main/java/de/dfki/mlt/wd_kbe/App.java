@@ -50,7 +50,6 @@ public class App {
 					if (!(line.equals("[") || line.equals("]"))) {
 						jsonObject = new JSONObject(line);
 						esService.insertEntities(jsonObject);
-						esService.insertClaims(jsonObject);
 					}
 				}
 			} catch (IOException e) {

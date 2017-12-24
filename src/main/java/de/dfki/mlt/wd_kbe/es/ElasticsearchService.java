@@ -92,8 +92,7 @@ public class ElasticsearchService {
 			deleteIndex(indicesAdminClient, indexName);
 		}
 		if (createIndex(indicesAdminClient, indexName)) {
-			result = putMappingForEntity(indicesAdminClient)
-					&& putMappingForClaim(indicesAdminClient);
+			result = putMappingForEntity(indicesAdminClient);
 		}
 		return result;
 	}
@@ -134,8 +133,13 @@ public class ElasticsearchService {
 				.field("index", "not_analyzed").endObject()
 				.startObject("label").field("type", "string")
 				.field("index", "not_analyzed").endObject()
-				.startObject("wikipedia_title").field("type", "string")
-				.field("index", "not_analyzed").endObject().endObject() // properties
+				.startObject("wiki-title").field("type", "string")
+				.field("index", "not_analyzed").endObject()
+				.startObject("claims").startObject("properties")
+				.startObject("property-id").field("type", "string").field("index", "not_analyzed").endObject()
+				.startObject("object-id").field("type", "string").field("index", "not_analyzed").endObject().endObject()
+				.endObject()// end claims
+				.endObject() // properties
 				.endObject()// documentType
 				.endObject();
 
@@ -145,32 +149,6 @@ public class ElasticsearchService {
 						Config.getInstance().getString(Config.INDEX_NAME))
 				.setType(
 						Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
-				.setSource(mappingBuilder).execute().actionGet();
-		return putMappingResponse.isAcknowledged();
-	}
-
-	private boolean putMappingForClaim(IndicesAdminClient indicesAdminClient)
-			throws IOException {
-		XContentBuilder mappingBuilder = XContentFactory
-				.jsonBuilder()
-				.startObject()
-				.startObject(
-						Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
-				.startObject("properties").startObject("entity_id")
-				.field("type", "string").field("index", "not_analyzed")
-				.endObject().startObject("property_id").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("data_type").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("data_value").field("type", "string")
-				.field("index", "not_analyzed").endObject().endObject() // properties
-				.endObject()// document Type
-				.endObject();
-		App.logger.debug("Mapping for property:" + mappingBuilder.string());
-		PutMappingResponse putMappingResponse = indicesAdminClient
-				.preparePutMapping(
-						Config.getInstance().getString(Config.INDEX_NAME))
-				.setType(Config.getInstance().getString(Config.CLAIM_TYPE_NAME))
 				.setSource(mappingBuilder).execute().actionGet();
 		return putMappingResponse.isAcknowledged();
 	}
@@ -265,6 +243,44 @@ public class ElasticsearchService {
 					.getJSONObject("enwiki").getString("title")
 					.replace(" ", "_");
 		}
+		List<String> aliases = getAliasList(jsonObj, label);
+		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
+				.field("type", type).field("label", label)
+				.field("wiki-title", wikipediaTitle).field("aliases", aliases)
+				.startArray("claims");
+
+		if (type.equals("item")) {
+			JSONObject claims = jsonObj.getJSONObject("claims");
+			Iterator<String> itr = claims.keys();
+			while (itr.hasNext()) {
+				String propertyId = itr.next();
+				JSONArray snakArray = claims.getJSONArray(propertyId);
+				if (Helper.checkAttributeAvailable(((JSONObject) snakArray
+						.get(0)).getJSONObject("mainsnak"), "datavalue")) {
+					JSONObject dataJson = ((JSONObject) snakArray.get(0))
+							.getJSONObject("mainsnak").getJSONObject(
+									"datavalue");
+					String dataType = dataJson.getString("type");
+					if (dataType.equals("wikibase-entityid")) {
+						String dataValue = dataJson.getJSONObject("value")
+								.getString("id");
+						builder.startObject().field("property_id", propertyId)
+								.field("object-id", dataValue).endObject();
+					}
+				}
+			}
+		}
+		builder.endArray().endObject();
+
+		IndexRequest indexRequest = Requests.indexRequest()
+				.index(Config.getInstance().getString(Config.INDEX_NAME))
+				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
+				.id(id).source(builder.string());
+		getBulkProcessor().add(indexRequest);
+
+	}
+
+	private List<String> getAliasList(JSONObject jsonObj, String label) {
 		List<String> aliases = new ArrayList<String>();
 		aliases.add(label);
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
@@ -275,95 +291,6 @@ public class ElasticsearchService {
 				aliases.add(((JSONObject) aliasObj).getString("value"));
 			}
 		}
-		IndexRequest indexRequest = createEntityIndexRequest(id, type, label,
-				wikipediaTitle, aliases);
-		getBulkProcessor().add(indexRequest);
-
-	}
-
-	public IndexRequest createEntityIndexRequest(String id, String type,
-			String label, String wikipediaTitle, List<String> aliases)
-			throws IOException {
-		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
-				.field("type", type).field("label", label)
-				.field("wikipedia_title", wikipediaTitle)
-				.field("aliases", aliases).endObject();
-
-		IndexRequest indexRequest = Requests.indexRequest()
-				.index(Config.getInstance().getString(Config.INDEX_NAME))
-				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
-				.id(id).source(builder.string());
-		return indexRequest;
-	}
-
-	public void insertClaims(JSONObject jsonObj) throws IOException {
-		String entityType = jsonObj.getString("type");
-		String entityId = jsonObj.getString("id");
-		if (entityType.equals("item")) {
-			IndexRequest indexRequest = new IndexRequest();
-			JSONObject claims = jsonObj.getJSONObject("claims");
-			Iterator<String> itr = claims.keys();
-			while (itr.hasNext()) {
-				String propertyId = itr.next();
-				JSONArray snakArray = claims.getJSONArray(propertyId);
-				XContentBuilder builder = buildClaimRequest(entityId,
-						propertyId, snakArray);
-				if (builder != null) {
-					indexRequest = Requests
-							.indexRequest()
-							.index(Config.getInstance().getString(
-									Config.INDEX_NAME))
-							.type(Config.getInstance().getString(
-									Config.CLAIM_TYPE_NAME))
-							.source(builder.string());
-					getBulkProcessor().add(indexRequest);
-				}
-			}
-		}
-	}
-
-	private XContentBuilder buildClaimRequest(String entityId,
-			String propertyId, JSONArray snakArray) throws IOException {
-		XContentBuilder builder = null;
-		JSONObject dataJson = new JSONObject();
-		String dataValue = "";
-		String dataType = "";
-		if (Helper.checkAttributeAvailable(
-				((JSONObject) snakArray.get(0)).getJSONObject("mainsnak"),
-				"datavalue")) {
-			dataJson = ((JSONObject) snakArray.get(0))
-					.getJSONObject("mainsnak").getJSONObject("datavalue");
-			dataType = dataJson.getString("type");
-
-			switch (dataType) {
-			case "string":
-				dataValue = dataJson.getString("value");
-				break;
-			case "wikibase-entityid":
-				dataValue = dataJson.getJSONObject("value").getString("id");
-				break;
-			case "globecoordinate":
-				dataValue = dataJson.getJSONObject("value").get("latitude")
-						+ ";"
-						+ dataJson.getJSONObject("value").get("longitude");
-				break;
-			case "quantity":
-				dataValue = dataJson.getJSONObject("value").getString("amount")
-						+ ";"
-						+ dataJson.getJSONObject("value").getString("unit");
-				break;
-			case "time":
-				dataValue = dataJson.getJSONObject("value").getString("time");
-				break;
-			default:
-				break;
-			}
-			builder = XContentFactory.jsonBuilder().startObject()
-					.field("entity_id", entityId)
-					.field("property_id", propertyId)
-					.field("data_type", dataType)
-					.field("data_value", dataValue).endObject();
-		}
-		return builder;
+		return aliases;
 	}
 }
