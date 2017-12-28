@@ -264,7 +264,7 @@ public class ElasticsearchService {
 					if (dataType.equals("wikibase-entityid")) {
 						String dataValue = dataJson.getJSONObject("value")
 								.getString("id");
-						builder.startObject().field("property_id", propertyId)
+						builder.startObject().field("property-id", propertyId)
 								.field("object-id", dataValue).endObject();
 					}
 				}
