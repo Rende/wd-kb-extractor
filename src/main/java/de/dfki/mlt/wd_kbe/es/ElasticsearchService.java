@@ -318,9 +318,9 @@ public class ElasticsearchService {
 		List<Token> tokenList = Outputter.createTokens(annString);
 		StringBuilder builder = new StringBuilder();
 		for (Token token : tokenList) {
-			builder.append(lemmatize(token.getImage()));
+			builder.append(lemmatize(token.getImage())+ " ");
 		}
-		return builder.toString();
+		return builder.toString().trim();
 	}
 
 	public String lemmatize(String documentText) {
