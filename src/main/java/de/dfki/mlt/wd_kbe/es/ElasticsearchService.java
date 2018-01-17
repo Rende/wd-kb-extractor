@@ -339,7 +339,7 @@ public class ElasticsearchService {
 				String image = token.get(LemmaAnnotation.class);
 				image = image.replaceAll("-lrb-", "\\(");
 				image = image.replaceAll("-rrb-", "\\)");
-				builder.append(token.get(LemmaAnnotation.class));
+				builder.append(image);
 			}
 		}
 		return builder.toString();
