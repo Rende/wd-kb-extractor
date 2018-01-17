@@ -9,6 +9,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -38,17 +39,39 @@ import org.json.JSONObject;
 
 import com.google.common.collect.ImmutableList;
 
+import de.dfki.lt.tools.tokenizer.JTok;
+import de.dfki.lt.tools.tokenizer.annotate.AnnotatedString;
+import de.dfki.lt.tools.tokenizer.output.Outputter;
+import de.dfki.lt.tools.tokenizer.output.Token;
 import de.dfki.mlt.wd_kbe.App;
 import de.dfki.mlt.wd_kbe.Helper;
 import de.dfki.mlt.wd_kbe.preferences.Config;
+import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.util.CoreMap;
 
 public class ElasticsearchService {
 
 	private Client client;
 	private BulkProcessor bulkProcessor;
+	private JTok jtok;
+	protected StanfordCoreNLP pipeline;
 
 	public ElasticsearchService() {
 		getClient();
+		try {
+			jtok = new JTok();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		Properties props;
+		props = new Properties();
+		props.put("annotators", "tokenize, ssplit, pos, lemma");
+		pipeline = new StanfordCoreNLP(props);
 	}
 
 	private Client getClient() {
@@ -133,11 +156,15 @@ public class ElasticsearchService {
 				.field("index", "not_analyzed").endObject()
 				.startObject("label").field("type", "string")
 				.field("index", "not_analyzed").endObject()
+				.startObject("tok-label").field("type", "string")
+				.field("index", "not_analyzed").endObject()
 				.startObject("wiki-title").field("type", "string")
 				.field("index", "not_analyzed").endObject()
 				.startObject("claims").startObject("properties")
-				.startObject("property-id").field("type", "string").field("index", "not_analyzed").endObject()
-				.startObject("object-id").field("type", "string").field("index", "not_analyzed").endObject().endObject()
+				.startObject("property-id").field("type", "string")
+				.field("index", "not_analyzed").endObject()
+				.startObject("object-id").field("type", "string")
+				.field("index", "not_analyzed").endObject().endObject()
 				.endObject()// end claims
 				.endObject() // properties
 				.endObject()// documentType
@@ -228,13 +255,16 @@ public class ElasticsearchService {
 		String id = jsonObj.getString("id");
 		String wikipediaTitle = "";
 		String label = "";
+		String tokenizedLbl = "";
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("labels"),
 				"en")) {
 			JSONObject labelObj = jsonObj.getJSONObject("labels")
 					.getJSONObject("en");
 			label = labelObj.getString("value");
+			tokenizedLbl = tokenizer(label);
 		} else {
 			label = "no label";
+			tokenizedLbl = label;
 		}
 		if (Helper.checkAttributeAvailable(jsonObj, "sitelinks")
 				&& Helper.checkAttributeAvailable(
@@ -243,11 +273,13 @@ public class ElasticsearchService {
 					.getJSONObject("enwiki").getString("title")
 					.replace(" ", "_");
 		}
-		List<String> aliases = getAliasList(jsonObj, label);
+		List<String> aliases = getAliases(jsonObj, label);
+		List<String> tokenizedAls = getTokenizedAliases(aliases);
 		XContentBuilder builder = XContentFactory.jsonBuilder().startObject()
 				.field("type", type).field("label", label)
+				.field("tok-label", tokenizedLbl)
 				.field("wiki-title", wikipediaTitle).field("aliases", aliases)
-				.startArray("claims");
+				.field("tok-aliases", tokenizedAls).startArray("claims");
 
 		if (type.equals("item")) {
 			JSONObject claims = jsonObj.getJSONObject("claims");
@@ -271,6 +303,7 @@ public class ElasticsearchService {
 			}
 		}
 		builder.endArray().endObject();
+		System.out.println(builder.toString());
 
 		IndexRequest indexRequest = Requests.indexRequest()
 				.index(Config.getInstance().getString(Config.INDEX_NAME))
@@ -280,7 +313,36 @@ public class ElasticsearchService {
 
 	}
 
-	private List<String> getAliasList(JSONObject jsonObj, String label) {
+	public String tokenizer(String text) {
+		AnnotatedString annString = jtok.tokenize(text, "en");
+		List<Token> tokenList = Outputter.createTokens(annString);
+		StringBuilder builder = new StringBuilder();
+		for (Token token : tokenList) {
+			builder.append(lemmatize(token.getImage()));
+		}
+		return builder.toString();
+	}
+
+	public String lemmatize(String documentText) {
+		StringBuilder builder = new StringBuilder();
+		// Create an empty Annotation just with the given text
+		Annotation document = new Annotation(documentText);
+		// run all Annotators on this text
+		this.pipeline.annotate(document);
+		// Iterate over all of the sentences found
+		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
+		for (CoreMap sentence : sentences) {
+			// Iterate over all tokens in a sentence
+			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
+				// Retrieve and add the lemma for each word into the
+				// list of lemmas
+				builder.append(token.get(LemmaAnnotation.class));
+			}
+		}
+		return builder.toString();
+	}
+
+	private List<String> getAliases(JSONObject jsonObj, String label) {
 		List<String> aliases = new ArrayList<String>();
 		aliases.add(label);
 		if (Helper.checkAttributeAvailable(jsonObj.getJSONObject("aliases"),
@@ -292,5 +354,13 @@ public class ElasticsearchService {
 			}
 		}
 		return aliases;
+	}
+
+	private List<String> getTokenizedAliases(List<String> aliases) {
+		List<String> tokenizedAls = new ArrayList<String>();
+		for (String alias : aliases) {
+			tokenizedAls.add(tokenizer(alias));
+		}
+		return tokenizedAls;
 	}
 }
