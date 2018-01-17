@@ -335,7 +335,10 @@ public class ElasticsearchService {
 			// Iterate over all tokens in a sentence
 			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
 				// Retrieve and add the lemma for each word into the
-				// list of lemmas
+				// list of lemmas  -lrb-
+				String image = token.get(LemmaAnnotation.class);
+				image = image.replaceAll("-lrb-", "\\(");
+				image = image.replaceAll("-rrb-", "\\)");
 				builder.append(token.get(LemmaAnnotation.class));
 			}
 		}
