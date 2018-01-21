@@ -325,17 +325,11 @@ public class ElasticsearchService {
 
 	public String lemmatize(String documentText) {
 		StringBuilder builder = new StringBuilder();
-		// Create an empty Annotation just with the given text
 		Annotation document = new Annotation(documentText);
-		// run all Annotators on this text
 		this.pipeline.annotate(document);
-		// Iterate over all of the sentences found
 		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 		for (CoreMap sentence : sentences) {
-			// Iterate over all tokens in a sentence
 			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
-				// Retrieve and add the lemma for each word into the
-				// list of lemmas  -lrb-
 				String image = token.get(LemmaAnnotation.class);
 				image = image.replaceAll("-lrb-", "\\(");
 				image = image.replaceAll("-rrb-", "\\)");
