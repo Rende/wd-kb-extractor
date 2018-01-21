@@ -20,20 +20,20 @@ For example;  the entry *"Berlin"* has a document in ES as below:
      "tok-aliases": [
        "Berlin",
        "Berlin , Germany"
-   ],
+     ],
      "claims": [
         ...
           {
            "property-id": "P131",
-              "object-id": "Q183"
-            },
-            ...
+           "object-id": "Q183"
+          },
+        ...
       ]
 
 Claims are treated as relations (entity<sub>1</sub>, relation, entity<sub>2</sub>) such that;
 *entity-id + property-id + object-id* 
 
-Entity is the item itself (i.e. Q64). Each claim contains a relation i.e. property = relation, item = object-id
+Entity is the item itself (i.e. Q64). Each claim contains a relation i.e. property = relation, object=entity<sub>2</sub>
 Here for property P131 (alias: is located in) the object is Q183 (Germany). 
 The relation is (Berlin, is located in, Germany)
 
@@ -43,7 +43,7 @@ You can check the items via appending to the url https://www.wikidata.org/wiki/?
  - https://www.wikidata.org/wiki/Property:P131
  - https://www.wikidata.org/wiki/Q183
 
-We only take English attributes into consideration, still working on making it multilingual. 
+We only take English attributes into account, are still working on making it multilingual. 
 
 # Requirements
 Application inserts documents into Elasticsearch therefore you should have a running Elasticsearch instance on your machine. 
@@ -72,8 +72,9 @@ download kibana 4.4.0 (compatible version of elasticsearch-2.2.1)
   - bin/kibana plugin --install elastic/sense
     - bin/kibana
  
- For tokenizing, JTok should be installed, it can be found [here](https://github.com/DFKI-MLT/JTok)
- For lemmatizing, Stanford CoreNLP model jar has to be downloaded [here](http://nlp.stanford.edu/software/stanford-english-corenlp-2017-06-09-models.jar), after downloading, copy the file under "src/main/resources" folder then create a new folder named "local-repo" under your project folder then run the command below:
+ For tokenizing, JTok should be installed, it can be found [here](https://github.com/DFKI-MLT/JTok).
+ 
+ For lemmatizing, Stanford CoreNLP model jar has to be downloaded from [here](http://nlp.stanford.edu/software/stanford-english-corenlp-2017-06-09-models.jar), after downloading, copy the file under "src/main/resources" folder then create a new folder named "local-repo" under your project folder then run the command below:
 
     mvn install:install-file -Dfile=src/main/resources/stanford-english-corenlp-2017-06-09-models.jar -DgroupId=edu.stanford.nlp -DartifactId=stanford-english-corenlp-2017-06-09-models -Dversion=1.0 -Dpackaging=jar -DlocalRepositoryPath=local-repo
 
