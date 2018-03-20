@@ -2,13 +2,10 @@ package de.dfki.mlt.wd_kbe.es;
 
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
@@ -24,20 +21,16 @@ import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.client.Client;
 import org.elasticsearch.client.IndicesAdminClient;
 import org.elasticsearch.client.Requests;
-import org.elasticsearch.client.transport.TransportClient;
-import org.elasticsearch.cluster.node.DiscoveryNode;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.common.transport.InetSocketTransportAddress;
-import org.elasticsearch.common.transport.TransportAddress;
 import org.elasticsearch.common.unit.ByteSizeUnit;
 import org.elasticsearch.common.unit.ByteSizeValue;
 import org.elasticsearch.common.unit.TimeValue;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
-
-import com.google.common.collect.ImmutableList;
 
 import de.dfki.lt.tools.tokenizer.JTok;
 import de.dfki.lt.tools.tokenizer.annotate.AnnotatedString;
@@ -76,31 +69,18 @@ public class ElasticsearchService {
 
 	private Client getClient() {
 		if (client == null) {
-			Map<String, String> userConfig = getUserConfig();
-			List<InetSocketAddress> transportAddresses = getTransportAddresses();
-			List<TransportAddress> transportNodes;
-			transportNodes = new ArrayList<>(transportAddresses.size());
-			for (InetSocketAddress address : transportAddresses) {
-				transportNodes.add(new InetSocketTransportAddress(address));
-			}
-			Settings settings = Settings.settingsBuilder().put(userConfig)
+			Settings settings = Settings
+					.builder()
+					.put(Config.CLUSTER_NAME,
+							Config.getInstance().getString(Config.CLUSTER_NAME))
 					.build();
-
-			TransportClient transportClient = TransportClient.builder()
-					.settings(settings).build();
-			for (TransportAddress transport : transportNodes) {
-				transportClient.addTransportAddress(transport);
+			try {
+				client = new PreBuiltTransportClient(settings)
+						.addTransportAddress(new InetSocketTransportAddress(
+								InetAddress.getByName("134.96.187.233"), 9300));
+			} catch (UnknownHostException e) {
+				e.printStackTrace();
 			}
-
-			// verify that we actually are connected to a cluster
-			ImmutableList<DiscoveryNode> nodes = ImmutableList
-					.copyOf(transportClient.connectedNodes());
-			if (nodes.isEmpty()) {
-				throw new RuntimeException(
-						"Client is not connected to any Elasticsearch nodes!");
-			}
-
-			client = transportClient;
 		}
 		return client;
 	}
@@ -131,7 +111,7 @@ public class ElasticsearchService {
 			String indexName) {
 		final CreateIndexRequestBuilder createIndexRequestBuilder = indicesAdminClient
 				.prepareCreate(indexName).setSettings(
-						Settings.settingsBuilder()
+						Settings.builder()
 								.put(Config.NUMBER_OF_SHARDS,
 										Config.getInstance().getInt(
 												Config.NUMBER_OF_SHARDS))
@@ -152,20 +132,17 @@ public class ElasticsearchService {
 				.startObject(
 						Config.getInstance().getString(Config.ENTITY_TYPE_NAME))
 				.field("dynamic", "true").startObject("properties")
-				.startObject("type").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("label").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("tok-label").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("wiki-title").field("type", "string")
-				.field("index", "not_analyzed").endObject()
+				.startObject("type").field("type", "keyword")
+				.field("index", "true").endObject().startObject("label")
+				.field("type", "keyword").field("index", "true").endObject()
+				.startObject("tok-label").field("type", "keyword")
+				.field("index", "true").endObject().startObject("wiki-title")
+				.field("type", "keyword").field("index", "true").endObject()
 				.startObject("claims").startObject("properties")
-				.startObject("property-id").field("type", "string")
-				.field("index", "not_analyzed").endObject()
-				.startObject("object-id").field("type", "string")
-				.field("index", "not_analyzed").endObject().endObject()
-				.endObject()// end claims
+				.startObject("property-id").field("type", "keyword")
+				.field("index", "true").endObject().startObject("object-id")
+				.field("type", "keyword").field("index", "true").endObject()
+				.endObject().endObject()// end claims
 				.endObject() // properties
 				.endObject()// documentType
 				.endObject();
@@ -180,29 +157,7 @@ public class ElasticsearchService {
 		return putMappingResponse.isAcknowledged();
 	}
 
-	public static Map<String, String> getUserConfig() {
-		Map<String, String> config = new HashMap<>();
-		config.put(Config.BULK_FLUSH_MAX_ACTIONS, Config.getInstance()
-				.getString(Config.BULK_FLUSH_MAX_ACTIONS));
-		config.put(Config.CLUSTER_NAME,
-				Config.getInstance().getString(Config.CLUSTER_NAME));
-
-		return config;
-	}
-
-	public static List<InetSocketAddress> getTransportAddresses() {
-		List<InetSocketAddress> transports = new ArrayList<>();
-		try {
-			transports.add(new InetSocketAddress(InetAddress.getByName(Config
-					.getInstance().getString(Config.HOST)), Config
-					.getInstance().getInt(Config.PORT)));
-		} catch (UnknownHostException e) {
-			e.printStackTrace();
-		}
-		return transports;
-	}
-
-	public void stopConnection() {
+	public void stopConnection() throws UnknownHostException {
 		getBulkProcessor().close();
 		getClient().close();
 	}
@@ -318,7 +273,7 @@ public class ElasticsearchService {
 		List<Token> tokenList = Outputter.createTokens(annString);
 		StringBuilder builder = new StringBuilder();
 		for (Token token : tokenList) {
-			builder.append(lemmatize(token.getImage())+ " ");
+			builder.append(lemmatize(token.getImage()) + " ");
 		}
 		return builder.toString().trim();
 	}
