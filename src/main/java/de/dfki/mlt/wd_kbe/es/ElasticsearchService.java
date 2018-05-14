@@ -5,9 +5,10 @@ import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Properties;
+import java.util.Set;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -34,42 +35,23 @@ import org.elasticsearch.transport.client.PreBuiltTransportClient;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import de.dfki.lt.tools.tokenizer.JTok;
-import de.dfki.lt.tools.tokenizer.annotate.AnnotatedString;
-import de.dfki.lt.tools.tokenizer.output.Outputter;
-import de.dfki.lt.tools.tokenizer.output.Token;
 import de.dfki.mlt.wd_kbe.App;
 import de.dfki.mlt.wd_kbe.Helper;
+import de.dfki.mlt.wd_kbe.LanguagePreprocessor;
 import de.dfki.mlt.wd_kbe.preferences.Config;
-import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
-import edu.stanford.nlp.ling.CoreAnnotations.PartOfSpeechAnnotation;
-import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
-import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
-import edu.stanford.nlp.ling.CoreLabel;
-import edu.stanford.nlp.pipeline.Annotation;
-import edu.stanford.nlp.pipeline.StanfordCoreNLP;
-import edu.stanford.nlp.util.CoreMap;
 
 public class ElasticsearchService {
 
 	private Client client;
 	private BulkProcessor bulkProcessor;
-	private JTok jtok;
-	protected StanfordCoreNLP pipeline;
+	private LanguagePreprocessor languagePreprocessor;
 
 	public ElasticsearchService() {
 		getClient();
-		try {
-			jtok = new JTok();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		Properties props;
-		props = new Properties();
-		props.put("annotators", "tokenize, ssplit, pos, lemma");
-		pipeline = new StanfordCoreNLP(props);
+		languagePreprocessor = new LanguagePreprocessor();
 	}
 
+	@SuppressWarnings("resource")
 	private Client getClient() {
 		if (client == null) {
 			Settings settings = Settings.builder()
@@ -168,25 +150,25 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public void insertEntities(JSONObject jsonObject) throws IOException {
+	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject) throws IOException {
 		HashMap<String, Object> dataAsMap = new HashMap<String, Object>();
 		String type = jsonObject.getString("type");
 		dataAsMap.put("type", type);
-		String id = jsonObject.getString("id");
+
 		List<String> aliases = getAliases(jsonObject);
-		dataAsMap.put("aliases", aliases);
-		List<String> tokenizedAliases = getTokenizedAliases(aliases);
-		dataAsMap.put("tok-aliases", tokenizedAliases);
 		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("labels"), "en")) {
 			JSONObject labelObject = jsonObject.getJSONObject("labels").getJSONObject("en");
 			String label = labelObject.getString("value");
 			aliases.add(label);
 			dataAsMap.put("label", label);
-			dataAsMap.put("tok-label", tokenizer(label, false));
+			dataAsMap.put("tok-label", languagePreprocessor.tokenizer(label, false));
 		} else {
 			dataAsMap.put("label", "no label");
 			dataAsMap.put("tok-label", "no label");
 		}
+		dataAsMap.put("aliases", aliases);
+		Set<String> tokenizedAliases = getTokenizedAliases(aliases);
+		dataAsMap.put("tok-aliases", tokenizedAliases);
 
 		if (Helper.checkAttributeAvailable(jsonObject, "sitelinks")
 				&& Helper.checkAttributeAvailable(jsonObject.getJSONObject("sitelinks"), "enwiki")) {
@@ -216,63 +198,16 @@ public class ElasticsearchService {
 			}
 		}
 		dataAsMap.put("claims", claimMap);
+		return dataAsMap;
+	}
 
+	public void insertEntity(JSONObject jsonObject) throws IOException {
+		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject);
+		String id = jsonObject.getString("id");
 		IndexRequest indexRequest = Requests.indexRequest().index(Config.getInstance().getString(Config.INDEX_NAME))
 				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).id(id)
 				.source(dataAsMap, XContentType.JSON);
 		getBulkProcessor().add(indexRequest);
-
-	}
-
-	public String tokenizer(String text, boolean isAlias) {
-		AnnotatedString annotatedString = jtok.tokenize(text, "en");
-		List<Token> tokenList = Outputter.createTokens(annotatedString);
-		StringBuilder builder = new StringBuilder();
-		for (Token token : tokenList) {
-			if (isAlias)
-				builder.append(lemmatizeAliases(token.getImage()) + " ");
-			else
-				builder.append(lemmatize(token.getImage()) + " ");
-		}
-		return builder.toString().trim();
-	}
-
-	public String lemmatize(String documentText) {
-		StringBuilder builder = new StringBuilder();
-		Annotation document = new Annotation(documentText);
-		this.pipeline.annotate(document);
-		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
-		for (CoreMap sentence : sentences) {
-			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
-				String image = token.get(LemmaAnnotation.class);
-				image = replaceParantheses(image);
-				builder.append(image);
-			}
-		}
-		return builder.toString();
-	}
-
-	public String lemmatizeAliases(String documentText) {
-		StringBuilder builder = new StringBuilder();
-		Annotation document = new Annotation(documentText);
-		this.pipeline.annotate(document);
-		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
-		for (CoreMap sentence : sentences) {
-			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
-				String tag = token.get(PartOfSpeechAnnotation.class);
-				if (tag.startsWith("V") || tag.startsWith("N")) {
-					String image = token.get(LemmaAnnotation.class);
-					image = replaceParantheses(image);
-					builder.append(image + " ");
-				}
-			}
-		}
-		return builder.toString().trim();
-	}
-
-	public String replaceParantheses(String image) {
-		return image = image.replaceAll("-lrb-", "\\(").replaceAll("-rrb-", "\\)").replaceAll("-lcb-", "\\{")
-				.replaceAll("-rcb-", "\\}").replaceAll("-lsb-", "\\[").replaceAll("-rsb-", "\\]");
 	}
 
 	private List<String> getAliases(JSONObject jsonObject) {
@@ -286,10 +221,10 @@ public class ElasticsearchService {
 		return aliases;
 	}
 
-	private List<String> getTokenizedAliases(List<String> aliases) {
-		List<String> tokenizedAliases = new ArrayList<String>();
+	private Set<String> getTokenizedAliases(List<String> aliases) {
+		Set<String> tokenizedAliases = new HashSet<String>();
 		for (String alias : aliases) {
-			tokenizedAliases.add(tokenizer(alias, true));
+			tokenizedAliases.add(languagePreprocessor.tokenizer(alias, true));
 		}
 		return tokenizedAliases;
 	}

@@ -49,7 +49,7 @@ public class App {
 				while ((line = reader.readLine()) != null) {
 					if (!(line.equals("[") || line.equals("]"))) {
 						jsonObject = new JSONObject(line);
-						esService.insertEntities(jsonObject);
+						esService.insertEntity(jsonObject);
 					}
 				}
 			} catch (IOException e) {
