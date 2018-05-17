@@ -177,7 +177,7 @@ public class ElasticsearchService {
 			dataAsMap.put("wiki-title", wikipediaTitle);
 		}
 
-		HashMap<String, Object> claimMap = new HashMap<String, Object>();
+		List<HashMap<String, String>> claimList = new ArrayList<HashMap<String, String>>();
 		if (type.equals("item")) {
 			JSONObject claims = jsonObject.getJSONObject("claims");
 			Iterator<String> iterator = claims.keys();
@@ -191,13 +191,15 @@ public class ElasticsearchService {
 					String dataType = dataJson.getString("type");
 					if (dataType.equals("wikibase-entityid")) {
 						String dataValue = dataJson.getJSONObject("value").getString("id");
-						claimMap.put("property-id", propertyId);
-						claimMap.put("object-id", dataValue);
+						HashMap<String, String> claim = new HashMap<String, String>();
+						claim.put("property-id", propertyId);
+						claim.put("object-id", dataValue);
+						claimList.add(claim);
 					}
 				}
 			}
 		}
-		dataAsMap.put("claims", claimMap);
+		dataAsMap.put("claims", claimList);
 		return dataAsMap;
 	}
 
