@@ -20,9 +20,9 @@ public class LanguagePreprocessorTest {
 		String actualTokenizedAlias2 = languagePreprocessor.tokenizer(alias2, true);
 		String actualTokenizedAlias3 = languagePreprocessor.tokenizer(alias3, true);
 		
-		String expectedTokenizedAlias = "list light id";
+		String expectedTokenizedAlias = "list of light id";
 		String expectedTokenizedAlias2 = "heritage database id";
-		String expectedTokenizedAlias3 = "mirror datum";
+		String expectedTokenizedAlias3 = "mirror datum from";
 		
 		assertThat(actualTokenizedAlias).isEqualTo(expectedTokenizedAlias);
 		assertThat(actualTokenizedAlias2).isEqualTo(expectedTokenizedAlias2);
