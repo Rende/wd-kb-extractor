@@ -72,7 +72,7 @@ public class LanguagePreprocessor {
 		for (CoreMap sentence : sentences) {
 			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
 				String tag = token.get(PartOfSpeechAnnotation.class);
-				if (tag.startsWith("V") || tag.startsWith("N")) {
+				if (tag.startsWith("VB") || tag.startsWith("NN") || tag.startsWith("IN")) {
 					String image = token.get(LemmaAnnotation.class);
 					image = replaceParantheses(image);
 					builder.append(image);
