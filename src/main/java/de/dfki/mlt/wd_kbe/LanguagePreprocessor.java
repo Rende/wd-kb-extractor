@@ -33,9 +33,24 @@ public class LanguagePreprocessor {
 		pipeline = new StanfordCoreNLP(props);
 	}
 
-	public String tokenizer(String text, boolean isAlias) {
-		AnnotatedString annotatedString = jtok.tokenize(text, "en");
+	public String tokenizer(String text, boolean isAlias, String lang) {
+		AnnotatedString annotatedString = jtok.tokenize(text, lang);
 		List<Token> tokenList = Outputter.createTokens(annotatedString);
+		String result = "";
+		if (lang.equals("de")) {
+			StringBuilder builder = new StringBuilder();
+			for (Token token : tokenList) {
+				builder.append(token.getImage().toLowerCase() + " ");
+			}
+			result = builder.toString().trim();
+		} else {
+			result = lemmatizeTokensEN(isAlias, tokenList);
+		}
+
+		return result;
+	}
+
+	public String lemmatizeTokensEN(boolean isAlias, List<Token> tokenList) {
 		StringBuilder builder = new StringBuilder();
 		for (Token token : tokenList) {
 			if (isAlias) {

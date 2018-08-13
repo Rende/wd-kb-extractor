@@ -49,7 +49,8 @@ public class App {
 				while ((line = reader.readLine()) != null) {
 					if (!(line.equals("[") || line.equals("]"))) {
 						jsonObject = new JSONObject(line);
-						esService.insertEntity(jsonObject);
+						esService.insertEntity(jsonObject, Config.getInstance().getString(
+								Config.LANG));
 					}
 				}
 			} catch (IOException e) {

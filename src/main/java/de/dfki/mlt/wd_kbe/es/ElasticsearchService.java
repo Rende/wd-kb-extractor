@@ -150,30 +150,30 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject) throws IOException {
+	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject, String lang) throws IOException {
 		HashMap<String, Object> dataAsMap = new HashMap<String, Object>();
 		String type = jsonObject.getString("type");
 		dataAsMap.put("type", type);
 
-		List<String> aliases = getAliases(jsonObject);
-		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("labels"), "en")) {
-			JSONObject labelObject = jsonObject.getJSONObject("labels").getJSONObject("en");
+		List<String> aliases = getAliases(jsonObject, lang);
+		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("labels"), lang)) {
+			JSONObject labelObject = jsonObject.getJSONObject("labels").getJSONObject(lang);
 			String label = labelObject.getString("value");
 			aliases.add(label);
 			dataAsMap.put("label", label);
-			dataAsMap.put("tok-label", languagePreprocessor.tokenizer(label, false));
+			dataAsMap.put("tok-label", languagePreprocessor.tokenizer(label, false, lang));
 		} else {
 			dataAsMap.put("label", "no label");
 			dataAsMap.put("tok-label", "no label");
 		}
 		dataAsMap.put("aliases", aliases);
-		Set<String> tokenizedAliases = getTokenizedAliases(aliases);
+		Set<String> tokenizedAliases = getTokenizedAliases(aliases, lang);
 		dataAsMap.put("tok-aliases", tokenizedAliases);
 
 		if (Helper.checkAttributeAvailable(jsonObject, "sitelinks")
-				&& Helper.checkAttributeAvailable(jsonObject.getJSONObject("sitelinks"), "enwiki")) {
-			String wikipediaTitle = jsonObject.getJSONObject("sitelinks").getJSONObject("enwiki").getString("title")
-					.replace(" ", "_");
+				&& Helper.checkAttributeAvailable(jsonObject.getJSONObject("sitelinks"), lang + "wiki")) {
+			String wikipediaTitle = jsonObject.getJSONObject("sitelinks").getJSONObject(lang + "wiki")
+					.getString("title").replace(" ", "_");
 			dataAsMap.put("wiki-title", wikipediaTitle);
 		}
 
@@ -203,8 +203,8 @@ public class ElasticsearchService {
 		return dataAsMap;
 	}
 
-	public void insertEntity(JSONObject jsonObject) throws IOException {
-		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject);
+	public void insertEntity(JSONObject jsonObject, String lang) throws IOException {
+		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject, lang);
 		String id = jsonObject.getString("id");
 		IndexRequest indexRequest = Requests.indexRequest().index(Config.getInstance().getString(Config.INDEX_NAME))
 				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).id(id)
@@ -212,10 +212,10 @@ public class ElasticsearchService {
 		getBulkProcessor().add(indexRequest);
 	}
 
-	private List<String> getAliases(JSONObject jsonObject) {
+	private List<String> getAliases(JSONObject jsonObject, String lang) {
 		List<String> aliases = new ArrayList<String>();
-		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("aliases"), "en")) {
-			JSONArray aliasArray = jsonObject.getJSONObject("aliases").getJSONArray("en");
+		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("aliases"), lang)) {
+			JSONArray aliasArray = jsonObject.getJSONObject("aliases").getJSONArray(lang);
 			for (Object aliasObject : aliasArray) {
 				aliases.add(((JSONObject) aliasObject).getString("value"));
 			}
@@ -223,10 +223,10 @@ public class ElasticsearchService {
 		return aliases;
 	}
 
-	private Set<String> getTokenizedAliases(List<String> aliases) {
+	private Set<String> getTokenizedAliases(List<String> aliases, String lang) {
 		Set<String> tokenizedAliases = new HashSet<String>();
 		for (String alias : aliases) {
-			tokenizedAliases.add(languagePreprocessor.tokenizer(alias, true));
+			tokenizedAliases.add(languagePreprocessor.tokenizer(alias, true, lang));
 		}
 		return tokenizedAliases;
 	}

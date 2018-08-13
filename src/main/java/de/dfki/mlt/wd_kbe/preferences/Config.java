@@ -19,9 +19,10 @@ public final class Config {
 	public static final String PORT = "port";
 	public static final String NUMBER_OF_SHARDS = "number_of_shards";
 	public static final String NUMBER_OF_REPLICAS = "number_of_replicas";
-	public static final String INDEX_NAME="index.name";
-	public static final String ENTITY_TYPE_NAME="entity.type.name";
-	public static final String CLAIM_TYPE_NAME="claim.type.name";
+	public static final String INDEX_NAME = "index.name";
+	public static final String ENTITY_TYPE_NAME = "entity.type.name";
+	public static final String CLAIM_TYPE_NAME = "claim.type.name";
+	public static final String LANG = "language";
 
 	private static PropertiesConfiguration config;
 
