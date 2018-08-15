@@ -9,3 +9,7 @@
 /wd-kb-extractor.log
 /local-repo
 stanford-english-corenlp-2017-06-09-models.jar
+models/
+DE_pipeline.conf
+EN_pipeline.conf
+/gnt.log

@@ -14,6 +14,7 @@ import org.junit.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import de.dfki.mlt.wd_kbe.es.ElasticsearchService;
+import de.dfki.mlt.wd_kbe.preferences.Config;
 
 public class ElasticsearchServiceTest {
 
@@ -22,16 +23,17 @@ public class ElasticsearchServiceTest {
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testConstructEntityDataMap() throws IOException {
-		String id = "P3443";
-		String query = "https://www.wikidata.org/w/api.php?action=wbgetentities&languages=en&format=json&ids=" + id;
-		JSONObject jsonObject = processQuery(query);
-		JSONObject jsonEntityObject = jsonObject.getJSONObject("entities").getJSONObject(id);
-		String lang = "en";
+		if (Config.getInstance().getString(Config.LANG).equals("en")) {
+			String id = "P3443";
+			String query = "https://www.wikidata.org/w/api.php?action=wbgetentities&languages=en&format=json&ids=" + id;
+			JSONObject jsonObject = processQuery(query);
+			JSONObject jsonEntityObject = jsonObject.getJSONObject("entities").getJSONObject(id);
 
-		HashMap<String, Object> dataAsMap = esService.constructEntityDataMap(jsonEntityObject, lang);
-		Set<String> tokenizedAliases = (Set<String>) dataAsMap.get("tok-aliases");
-		assertThat(tokenizedAliases).containsExactly("vhd id", "heritage database id");
-		System.out.println(dataAsMap.toString());
+			HashMap<String, Object> dataAsMap = esService.constructEntityDataMap(jsonEntityObject);
+			Set<String> tokenizedAliases = (Set<String>) dataAsMap.get("tok-aliases");
+			assertThat(tokenizedAliases).containsExactly("vhd id", "heritage database id");
+			System.out.println(dataAsMap.toString());
+		}
 	}
 
 	public JSONObject processQuery(String query) throws UnsupportedEncodingException, IOException {

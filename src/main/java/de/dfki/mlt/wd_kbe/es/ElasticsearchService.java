@@ -44,20 +44,22 @@ public class ElasticsearchService {
 
 	private Client client;
 	private BulkProcessor bulkProcessor;
-	private LanguagePreprocessor languagePreprocessor;
+	private LanguagePreprocessor langProcessor;
+	private String lang;
 
 	public ElasticsearchService() {
 		getClient();
-		languagePreprocessor = new LanguagePreprocessor();
+		this.lang = Config.getInstance().getString(Config.LANG);
+		this.langProcessor = new LanguagePreprocessor(lang);
 	}
 
 	@SuppressWarnings("resource")
 	private Client getClient() {
-		if (client == null) {
+		if (this.client == null) {
 			Settings settings = Settings.builder()
 					.put(Config.CLUSTER_NAME, Config.getInstance().getString(Config.CLUSTER_NAME)).build();
 			try {
-				client = new PreBuiltTransportClient(settings).addTransportAddress(
+				this.client = new PreBuiltTransportClient(settings).addTransportAddress(
 						new InetSocketTransportAddress(InetAddress.getByName("134.96.187.233"), 9300));
 			} catch (UnknownHostException e) {
 				e.printStackTrace();
@@ -150,24 +152,24 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject, String lang) throws IOException {
+	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject) throws IOException {
 		HashMap<String, Object> dataAsMap = new HashMap<String, Object>();
 		String type = jsonObject.getString("type");
 		dataAsMap.put("type", type);
 
-		List<String> aliases = getAliases(jsonObject, lang);
+		List<String> aliases = getAliases(jsonObject);
 		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("labels"), lang)) {
 			JSONObject labelObject = jsonObject.getJSONObject("labels").getJSONObject(lang);
 			String label = labelObject.getString("value");
 			aliases.add(label);
 			dataAsMap.put("label", label);
-			dataAsMap.put("tok-label", languagePreprocessor.tokenizer(label, false, lang));
+			dataAsMap.put("tok-label", langProcessor.tokenizeLemmatizeText(label, false));
 		} else {
 			dataAsMap.put("label", "no label");
 			dataAsMap.put("tok-label", "no label");
 		}
 		dataAsMap.put("aliases", aliases);
-		Set<String> tokenizedAliases = getTokenizedAliases(aliases, lang);
+		Set<String> tokenizedAliases = getLemmatizedAliases(aliases);
 		dataAsMap.put("tok-aliases", tokenizedAliases);
 
 		if (Helper.checkAttributeAvailable(jsonObject, "sitelinks")
@@ -203,8 +205,8 @@ public class ElasticsearchService {
 		return dataAsMap;
 	}
 
-	public void insertEntity(JSONObject jsonObject, String lang) throws IOException {
-		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject, lang);
+	public void insertEntity(JSONObject jsonObject) throws IOException {
+		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject);
 		String id = jsonObject.getString("id");
 		IndexRequest indexRequest = Requests.indexRequest().index(Config.getInstance().getString(Config.INDEX_NAME))
 				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).id(id)
@@ -212,7 +214,7 @@ public class ElasticsearchService {
 		getBulkProcessor().add(indexRequest);
 	}
 
-	private List<String> getAliases(JSONObject jsonObject, String lang) {
+	private List<String> getAliases(JSONObject jsonObject) {
 		List<String> aliases = new ArrayList<String>();
 		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("aliases"), lang)) {
 			JSONArray aliasArray = jsonObject.getJSONObject("aliases").getJSONArray(lang);
@@ -223,10 +225,10 @@ public class ElasticsearchService {
 		return aliases;
 	}
 
-	private Set<String> getTokenizedAliases(List<String> aliases, String lang) {
+	private Set<String> getLemmatizedAliases(List<String> aliases) {
 		Set<String> tokenizedAliases = new HashSet<String>();
 		for (String alias : aliases) {
-			tokenizedAliases.add(languagePreprocessor.tokenizer(alias, true, lang));
+			tokenizedAliases.add(langProcessor.tokenizeLemmatizeText(alias, true));
 		}
 		return tokenizedAliases;
 	}

@@ -20,6 +20,16 @@
 
 	<dependencies>
 		<dependency>
+			<groupId>de.dfki.mlt.gnt</groupId>
+			<artifactId>gnt</artifactId>
+			<version>1.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>de.dfki.mlt.munderline</groupId>
+			<artifactId>munderline</artifactId>
+			<version>1.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.12</version>
@@ -75,6 +85,11 @@
 			<groupId>de.dfki.lt.jtok</groupId>
 			<artifactId>jtok-core</artifactId>
 			<version>2.1.20-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.opennlp</groupId>
+			<artifactId>opennlp-tools</artifactId>
+			<version>1.8.4</version>
 		</dependency>
 	</dependencies>
 	<build>

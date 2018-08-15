@@ -29,16 +29,14 @@ public class App {
 		logger.debug("Wikidata knowledgebase extraction started.");
 		ElasticsearchService esService = new ElasticsearchService();
 		try {
-			esService.checkAndCreateIndex(Config.getInstance().getString(
-					Config.INDEX_NAME));
+			esService.checkAndCreateIndex(Config.getInstance().getString(Config.INDEX_NAME));
 
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 		BufferedReader reader = null;
 		try {
-			reader = getBufferedReaderForCompressedFile(Config.getInstance()
-					.getString(Config.DIRECTORY_PATH));
+			reader = getBufferedReaderForCompressedFile(Config.getInstance().getString(Config.DIRECTORY_PATH));
 		} catch (FileNotFoundException | CompressorException e) {
 			e.printStackTrace();
 		}
@@ -49,8 +47,7 @@ public class App {
 				while ((line = reader.readLine()) != null) {
 					if (!(line.equals("[") || line.equals("]"))) {
 						jsonObject = new JSONObject(line);
-						esService.insertEntity(jsonObject, Config.getInstance().getString(
-								Config.LANG));
+						esService.insertEntity(jsonObject);
 					}
 				}
 			} catch (IOException e) {
@@ -69,15 +66,13 @@ public class App {
 
 	}
 
-	public static BufferedReader getBufferedReaderForCompressedFile(
-			String fileIn) throws FileNotFoundException, CompressorException {
+	public static BufferedReader getBufferedReaderForCompressedFile(String fileIn)
+			throws FileNotFoundException, CompressorException {
 		FileInputStream inputStream = new FileInputStream(fileIn);
-		BufferedInputStream bufferedStream = new BufferedInputStream(
-				inputStream);
+		BufferedInputStream bufferedStream = new BufferedInputStream(inputStream);
 		CompressorInputStream compressorStream = new CompressorStreamFactory()
 				.createCompressorInputStream(bufferedStream);
-		BufferedReader reader = new BufferedReader(new InputStreamReader(
-				compressorStream, StandardCharsets.UTF_8));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(compressorStream, StandardCharsets.UTF_8));
 		return reader;
 	}
 }
