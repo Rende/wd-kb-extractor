@@ -1,7 +1,9 @@
 package de.dfki.mlt.wd_kbe;
 
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -56,7 +58,13 @@ public class LanguagePreprocessor {
 		LemmatizerModel lemmatizerModel = null;
 		try {
 			this.munderLine = new MunderLine("DE_pipeline.conf");
-			lemmatizerModel = new LemmatizerModel(new FileInputStream("src/main/resources/models/DE-lemmatizer.bin"));
+			String lemmatizerModelPath = "models/DE-lemmatizer.bin";
+			InputStream in = this.getClass().getClassLoader().getResourceAsStream(lemmatizerModelPath);
+			// if can't be loaded from classpath, try to load it from the file system
+			if (null == in) {
+				in = Files.newInputStream(Paths.get(lemmatizerModelPath));
+			}
+			lemmatizerModel = new LemmatizerModel(in);
 		} catch (ConfigurationException | IOException e) {
 			e.printStackTrace();
 		}
@@ -92,7 +100,6 @@ public class LanguagePreprocessor {
 		for (int i = 0; i < coNllTable.length; i++) {
 			tokens[i] = coNllTable[i][1];
 			posTags[i] = coNllTable[i][3];
-			System.out.println(tokens[i] + " ### " + posTags[i]);
 		}
 		String[] lemmata = this.lemmatizer.lemmatize(tokens, posTags);
 		StringBuilder builder = new StringBuilder();
