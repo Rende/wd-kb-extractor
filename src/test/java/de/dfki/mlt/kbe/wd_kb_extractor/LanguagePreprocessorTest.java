@@ -30,8 +30,23 @@ public class LanguagePreprocessorTest {
 		String actLemmText = langProcessorEN.lemmatizeEN(tokensAsString, false);
 		String expLemmText = "mirror datum from";
 		assertThat(actLemmText).isEqualTo(expLemmText);
+		
+		String text3 = "is designed by";
+		List<String> tokensAsString3 = langProcessorEN.tokenize(text3);
+		String actLemmText3 = langProcessorEN.lemmatizeEN(tokensAsString3, false);
+		String expLemmText3 = "be design by";
+		assertThat(actLemmText3).isEqualTo(expLemmText3);
+		
+		String text2 = "Stanford is located in Palo Alto.";
+		List<String> tokensAsString2 = langProcessorEN.tokenize(text2);
+		String actLemmText2 = langProcessorEN.lemmatizeEN(tokensAsString2, false);
+		String expLemmText2 = "stanford be locate in palo alto .";
+		assertThat(actLemmText2).isEqualTo(expLemmText2);
+		
+		
 	}
 
+	
 	@Test
 	public void testLemmatizerENForAlias() {
 		String alias = "Victorian Heritage Database ID";
