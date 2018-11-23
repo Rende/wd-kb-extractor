@@ -7,6 +7,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 
 import org.apache.commons.compress.compressors.CompressorException;
 import org.apache.commons.compress.compressors.CompressorInputStream;
@@ -34,6 +35,7 @@ public class App {
 		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
+		WikidataJsonParser parser = new WikidataJsonParser();
 		BufferedReader reader = null;
 		try {
 			reader = getBufferedReaderForCompressedFile(Config.getInstance().getString(Config.DIRECTORY_PATH));
@@ -47,7 +49,8 @@ public class App {
 				while ((line = reader.readLine()) != null) {
 					if (!(line.equals("[") || line.equals("]"))) {
 						jsonObject = new JSONObject(line);
-						esService.insertEntity(jsonObject);
+						HashMap<String, Object> dataMap = parser.parseJson(jsonObject);
+						esService.insertEntity(dataMap);
 					}
 				}
 			} catch (IOException e) {

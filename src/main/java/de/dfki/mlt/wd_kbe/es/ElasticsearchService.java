@@ -3,12 +3,7 @@ package de.dfki.mlt.wd_kbe.es;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Set;
 
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequestBuilder;
 import org.elasticsearch.action.admin.indices.create.CreateIndexResponse;
@@ -32,25 +27,17 @@ import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
 import org.elasticsearch.common.xcontent.XContentType;
 import org.elasticsearch.transport.client.PreBuiltTransportClient;
-import org.json.JSONArray;
-import org.json.JSONObject;
 
 import de.dfki.mlt.wd_kbe.App;
-import de.dfki.mlt.wd_kbe.Helper;
-import de.dfki.mlt.wd_kbe.LanguagePreprocessor;
 import de.dfki.mlt.wd_kbe.preferences.Config;
 
 public class ElasticsearchService {
 
 	private Client client;
 	private BulkProcessor bulkProcessor;
-	private LanguagePreprocessor langProcessor;
-	private String lang;
 
 	public ElasticsearchService() {
 		getClient();
-		this.lang = Config.getInstance().getString(Config.LANG);
-		this.langProcessor = new LanguagePreprocessor(lang);
 	}
 
 	@SuppressWarnings("resource")
@@ -100,13 +87,6 @@ public class ElasticsearchService {
 	private boolean putMappingForEntity(IndicesAdminClient indicesAdminClient) throws IOException {
 		XContentBuilder mappingBuilder = XContentFactory.jsonBuilder().startObject()
 				.startObject(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).field("dynamic", "true")
-				.startObject("properties").startObject("type").field("type", "keyword").field("index", "true")
-				.endObject().startObject("label").field("type", "keyword").field("index", "true").endObject()
-				.startObject("tok-label").field("type", "keyword").field("index", "true").endObject()
-				.startObject("wiki-title").field("type", "keyword").field("index", "true").endObject()
-				.startObject("claims").startObject("properties").startObject("property-id").field("type", "keyword")
-				.field("index", "true").endObject().startObject("object-id").field("type", "keyword")
-				.field("index", "true").endObject().endObject().endObject()// end claims
 				.endObject() // properties
 				.endObject() // documentType
 				.endObject();
@@ -152,84 +132,13 @@ public class ElasticsearchService {
 		return bulkProcessor;
 	}
 
-	public HashMap<String, Object> constructEntityDataMap(JSONObject jsonObject) throws IOException {
-		HashMap<String, Object> dataAsMap = new HashMap<String, Object>();
-		String type = jsonObject.getString("type");
-		dataAsMap.put("type", type);
-
-		List<String> aliases = getAliases(jsonObject);
-		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("labels"), lang)) {
-			JSONObject labelObject = jsonObject.getJSONObject("labels").getJSONObject(lang);
-			String label = labelObject.getString("value");
-			aliases.add(label);
-			dataAsMap.put("label", label);
-			dataAsMap.put("tok-label", langProcessor.tokenizeLemmatizeText(label, false));
-		} else {
-			dataAsMap.put("label", "no label");
-			dataAsMap.put("tok-label", "no label");
-		}
-		dataAsMap.put("aliases", aliases);
-		Set<String> tokenizedAliases = getLemmatizedAliases(aliases);
-		dataAsMap.put("tok-aliases", tokenizedAliases);
-
-		if (Helper.checkAttributeAvailable(jsonObject, "sitelinks")
-				&& Helper.checkAttributeAvailable(jsonObject.getJSONObject("sitelinks"), lang + "wiki")) {
-			String wikipediaTitle = jsonObject.getJSONObject("sitelinks").getJSONObject(lang + "wiki")
-					.getString("title").replace(" ", "_");
-			dataAsMap.put("wiki-title", wikipediaTitle);
-		}
-
-		List<HashMap<String, String>> claimList = new ArrayList<HashMap<String, String>>();
-		if (type.equals("item")) {
-			JSONObject claims = jsonObject.getJSONObject("claims");
-			Iterator<String> iterator = claims.keys();
-			while (iterator.hasNext()) {
-				String propertyId = iterator.next();
-				JSONArray snakArray = claims.getJSONArray(propertyId);
-				if (Helper.checkAttributeAvailable(((JSONObject) snakArray.get(0)).getJSONObject("mainsnak"),
-						"datavalue")) {
-					JSONObject dataJson = ((JSONObject) snakArray.get(0)).getJSONObject("mainsnak")
-							.getJSONObject("datavalue");
-					String dataType = dataJson.getString("type");
-					if (dataType.equals("wikibase-entityid")) {
-						String dataValue = dataJson.getJSONObject("value").getString("id");
-						HashMap<String, String> claim = new HashMap<String, String>();
-						claim.put("property-id", propertyId);
-						claim.put("object-id", dataValue);
-						claimList.add(claim);
-					}
-				}
-			}
-		}
-		dataAsMap.put("claims", claimList);
-		return dataAsMap;
-	}
-
-	public void insertEntity(JSONObject jsonObject) throws IOException {
-		HashMap<String, Object> dataAsMap = constructEntityDataMap(jsonObject);
-		String id = jsonObject.getString("id");
+	public void insertEntity(HashMap<String, Object> dataAsMap) throws IOException {
+		String id = dataAsMap.get("id").toString();
+		dataAsMap.remove("id");
 		IndexRequest indexRequest = Requests.indexRequest().index(Config.getInstance().getString(Config.INDEX_NAME))
 				.type(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).id(id)
 				.source(dataAsMap, XContentType.JSON);
 		getBulkProcessor().add(indexRequest);
 	}
 
-	private List<String> getAliases(JSONObject jsonObject) {
-		List<String> aliases = new ArrayList<String>();
-		if (Helper.checkAttributeAvailable(jsonObject.getJSONObject("aliases"), lang)) {
-			JSONArray aliasArray = jsonObject.getJSONObject("aliases").getJSONArray(lang);
-			for (Object aliasObject : aliasArray) {
-				aliases.add(((JSONObject) aliasObject).getString("value"));
-			}
-		}
-		return aliases;
-	}
-
-	private Set<String> getLemmatizedAliases(List<String> aliases) {
-		Set<String> tokenizedAliases = new HashSet<String>();
-		for (String alias : aliases) {
-			tokenizedAliases.add(langProcessor.tokenizeLemmatizeText(alias, true));
-		}
-		return tokenizedAliases;
-	}
 }
