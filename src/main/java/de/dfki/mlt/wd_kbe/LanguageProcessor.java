@@ -26,25 +26,20 @@ import edu.stanford.nlp.util.CoreMap;
 import opennlp.tools.lemmatizer.LemmatizerME;
 import opennlp.tools.lemmatizer.LemmatizerModel;
 
-public class LanguagePreprocessor {
+public class LanguageProcessor {
 	private JTok jtok;
 	private StanfordCoreNLP pipeline;
 	private LemmatizerME lemmatizer;
 	private MunderLine munderLine;
-	private String lang;
 
-	public LanguagePreprocessor(String lang) {
-		this.lang = lang;
+	public LanguageProcessor() {
 		try {
 			this.jtok = new JTok();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		if (this.lang.equals("en")) {
-			initializeENModuls();
-		} else if (this.lang.equals("de")) {
-			initializeDEModuls();
-		}
+		initializeENModuls();
+		initializeDEModuls();
 	}
 
 	private void initializeENModuls() {
@@ -71,19 +66,8 @@ public class LanguagePreprocessor {
 		this.lemmatizer = new LemmatizerME(lemmatizerModel);
 	}
 
-	public String tokenizeLemmatizeText(String text, boolean isAlias) {
-		String resultText = new String();
-		List<String> tokensAsString = tokenize(text);
-		if (this.lang.equals("en")) {
-			resultText = lemmatizeEN(tokensAsString, isAlias);
-		} else if (this.lang.equals("de")) {
-			resultText = lemmatizeDE(tokensAsString, isAlias);
-		}
-		return resultText;
-	}
-
-	public List<String> tokenize(String text) {
-		AnnotatedString annotatedString = jtok.tokenize(text, this.lang);
+	public List<String> tokenize(String text, String lang) {
+		AnnotatedString annotatedString = jtok.tokenize(text, lang);
 		List<Token> tokenList = Outputter.createTokens(annotatedString);
 		List<String> tokensAsString = new ArrayList<String>();
 		for (Token token : tokenList) {
@@ -92,7 +76,8 @@ public class LanguagePreprocessor {
 		return tokensAsString;
 	}
 
-	public String lemmatizeDE(List<String> tokensAsString, boolean isAlias) {
+	public String lemmatizeDE(String text, boolean isAlias) {
+		List<String> tokensAsString = tokenize(text, "de");
 		String[][] coNllTable = this.munderLine.processTokenizedSentence(tokensAsString);
 
 		String[] tokens = new String[coNllTable.length];
@@ -111,7 +96,8 @@ public class LanguagePreprocessor {
 		return builder.toString().trim();
 	}
 
-	public String lemmatizeEN(List<String> tokensAsString, boolean isAlias) {
+	public String lemmatizeEN(String text, boolean isAlias) {
+		List<String> tokensAsString = tokenize(text, "en");
 		StringBuilder builder = new StringBuilder();
 		Annotation document = null;
 		for (String token : tokensAsString) {
