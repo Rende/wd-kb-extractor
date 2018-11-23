@@ -22,7 +22,7 @@ public final class Config {
 	public static final String INDEX_NAME = "index.name";
 	public static final String ENTITY_TYPE_NAME = "entity.type.name";
 	public static final String CLAIM_TYPE_NAME = "claim.type.name";
-	public static final String LANG = "language";
+	public static final String LANG = "lang";
 
 	private static PropertiesConfiguration config;
 
