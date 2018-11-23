@@ -1,52 +1,48 @@
 package de.dfki.mlt.kbe.wd_kb_extractor;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.Reader;
-import java.io.StringWriter;
-import java.io.UnsupportedEncodingException;
-import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.Set;
+import java.util.List;
 
 import org.json.JSONObject;
 import org.junit.Test;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import de.dfki.mlt.wd_kbe.es.ElasticsearchService;
-import de.dfki.mlt.wd_kbe.preferences.Config;
+import de.dfki.mlt.wd_kbe.WikidataJsonParser;
 
-public class ElasticsearchServiceTest {
+public class WikidataJsonParserTest {
 
-	private ElasticsearchService esService = new ElasticsearchService();
+	private WikidataJsonParser parser = new WikidataJsonParser();
 
 	@SuppressWarnings("unchecked")
 	@Test
 	public void testConstructEntityDataMap() throws IOException {
-		if (Config.getInstance().getString(Config.LANG).equals("en")) {
-			String id = "P3443";
-			String query = "https://www.wikidata.org/w/api.php?action=wbgetentities&languages=en&format=json&ids=" + id;
-			JSONObject jsonObject = processQuery(query);
-			JSONObject jsonEntityObject = jsonObject.getJSONObject("entities").getJSONObject(id);
+		ClassLoader classLoader = getClass().getClassLoader();
+		InputStream inputStream = classLoader.getResourceAsStream("test-entity.json");
+		InputStreamReader streamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+		BufferedReader reader = new BufferedReader(streamReader);
+		JSONObject jsonObject = new JSONObject(reader.readLine());
+		reader.close();
+		streamReader.close();
+		inputStream.close();
+		HashMap<String, Object> dataAsMap = parser.parseJson(jsonObject);
+		HashMap<String, String> labels = (HashMap<String, String>) dataAsMap.get("labels");
+		assertThat(labels.get("en")).isEqualTo("planet");
+		assertThat(labels.get("de")).isEqualTo("Planet");
 
-			HashMap<String, Object> dataAsMap = esService.constructEntityDataMap(jsonEntityObject);
-			Set<String> tokenizedAliases = (Set<String>) dataAsMap.get("tok-aliases");
-			assertThat(tokenizedAliases).containsExactly("vhd id", "heritage database id");
-			System.out.println(dataAsMap.toString());
-		}
-	}
-
-	public JSONObject processQuery(String query) throws UnsupportedEncodingException, IOException {
-		URL get = new URL(query);
-		Reader reader = new InputStreamReader(get.openStream(), "UTF-8");
-		StringWriter output = new StringWriter();
-		int next = reader.read();
-		while (next != -1) {
-			output.write(next);
-			next = reader.read();
-		}
-		String result = output.toString();
-		return new JSONObject(result);
+		HashMap<String, String> descriptions = (HashMap<String, String>) dataAsMap.get("descriptions");
+		assertThat(descriptions.get("en")).isEqualTo("celestial body directly orbiting a star or stellar remnant");
+		assertThat(descriptions.get("de")).isEqualTo(
+				"nicht selbstleuchtender Himmelskörper, der sich um einen Stern bewegt und seine Umlaufbahn freigeräumt hat");
+		
+		HashMap<String, List<String>> lemAliases = (HashMap<String, List<String>>) dataAsMap.get("lem-aliases");
+		assertThat(lemAliases.get("en")).containsExactly("body");
+		System.out.println(dataAsMap.toString());
 	}
 
 }
