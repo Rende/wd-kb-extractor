@@ -31,7 +31,7 @@ public class WikidataJsonParser {
 		else if (!checkAttrAvailable(jsonObject, "datatype") && type.equals("property"))
 			datatype = WikibaseDatatype.Property;
 		else if (checkAttrAvailable(jsonObject, "datatype"))
-			datatype = WikibaseDatatype.valueOf(jsonObject.getString("datatype"));
+			datatype = WikibaseDatatype.fromString(jsonObject.getString("datatype"));
 		String id = jsonObject.getString("id");
 		HashMap<String, String> labels = getTextMap("labels", jsonObject);
 		HashMap<String, String> lemLabels = getLemmatizedTextMap(labels);
@@ -124,12 +124,15 @@ public class WikidataJsonParser {
 			while (iterator.hasNext()) {
 				String propertyId = iterator.next();
 				JSONArray snakArray = claims.getJSONArray(propertyId);
-				WikibaseDatatype datatype = WikibaseDatatype
-						.fromString(((JSONObject) snakArray.get(0)).getJSONObject("mainsnak").getString("datatype"));
-				JSONObject datavalueObj = ((JSONObject) snakArray.get(0)).getJSONObject("mainsnak")
-						.getJSONObject("datavalue");
-				HashMap<String, String> claim = getClaim(datatype, propertyId, datavalueObj);
-				claimList.add(claim);
+				if (checkAttrAvailable(((JSONObject) snakArray.get(0)).getJSONObject("mainsnak"), "datatype")) {
+					JSONObject mainsnak = ((JSONObject) snakArray.get(0)).getJSONObject("mainsnak");
+					WikibaseDatatype datatype = WikibaseDatatype.fromString(mainsnak.getString("datatype"));
+					if (datatype != null && checkAttrAvailable(mainsnak, "datavalue")) {
+						JSONObject datavalueObj = mainsnak.getJSONObject("datavalue");
+						HashMap<String, String> claim = getClaim(datatype, propertyId, datavalueObj);
+						claimList.add(claim);
+					}
+				}
 			}
 		}
 		return claimList;
@@ -139,50 +142,50 @@ public class WikidataJsonParser {
 		HashMap<String, String> claim = new HashMap<String, String>();
 		claim.put("property-id", propertyId);
 		switch (datatype) {
-		case Item:// ok
+		case Item:
 			JSONObject itemObj = valueObject.getJSONObject("value");
 			String wikibaseItemId = itemObj.getString("id");
 			claim.put(datatype.getDatatype(), wikibaseItemId);
 			break;
-		case ExternalId:// ok
+		case ExternalId:
 			String externalId = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), externalId);
 			break;
-		case Time:// ok
+		case Time:
 			JSONObject timeObj = valueObject.getJSONObject("value");
 			String time = timeObj.getString("time");
 			claim.put(datatype.getDatatype(), time);
 			break;
-		case URL:// ok
+		case URL:
 			String url = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), url);
 			break;
-		case String: // ok
+		case String:
 			String text = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), text);
 			break;
-		case MonolingualText:// ok
+		case MonolingualText:
 			JSONObject monoObj = valueObject.getJSONObject("value");
 			String mono = monoObj.getString("text");
 			claim.put(datatype.getDatatype(), mono);
 			break;
-		case Lexeme:// ok
+		case Lexeme:
 			JSONObject lexemeObj = valueObject.getJSONObject("value");
 			String lexemeId = lexemeObj.getString("id");
 			claim.put(datatype.getDatatype(), lexemeId);
 			break;
-		case Sense:// ok
+		case Sense:
 			JSONObject senseObj = valueObject.getJSONObject("value");
 			String senseId = senseObj.getString("id");
 			claim.put(datatype.getDatatype(), senseId);
 			break;
-		case GlobeCoordinate:// ok
+		case GlobeCoordinate:
 			JSONObject globeObj = valueObject.getJSONObject("value");
 			double lati = globeObj.getDouble("latitude");
 			double longi = globeObj.getDouble("longitude");
 			claim.put(datatype.getDatatype(), "lat:" + lati + ", long:" + longi);
 			break;
-		case CommonsMedia:// ok
+		case CommonsMedia:
 			String commonsMedia = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), commonsMedia);
 			break;
