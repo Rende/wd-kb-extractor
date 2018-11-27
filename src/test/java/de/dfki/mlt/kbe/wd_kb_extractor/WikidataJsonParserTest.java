@@ -13,6 +13,7 @@ import java.util.List;
 import org.json.JSONObject;
 import org.junit.Test;
 
+import de.dfki.mlt.wd_kbe.WikibaseDatatype;
 import de.dfki.mlt.wd_kbe.WikidataJsonParser;
 
 public class WikidataJsonParserTest {
@@ -43,6 +44,20 @@ public class WikidataJsonParserTest {
 		HashMap<String, List<String>> lemAliases = (HashMap<String, List<String>>) dataAsMap.get("lem-aliases");
 		assertThat(lemAliases.get("en")).containsExactly("body");
 		System.out.println(dataAsMap.toString());
+	}
+
+	@Test
+	public void testWikibaseDatatype() {
+
+		WikibaseDatatype url = WikibaseDatatype.fromString("url");
+		WikibaseDatatype item = WikibaseDatatype.fromString("wikibase-item");
+		WikibaseDatatype string = WikibaseDatatype.fromString("string");
+		WikibaseDatatype externalId = WikibaseDatatype.fromString("external-id");
+		
+		assertThat(url).isEqualTo(WikibaseDatatype.URL);
+		assertThat(item).isEqualTo(WikibaseDatatype.Item);
+		assertThat(string).isEqualTo(WikibaseDatatype.String);
+		assertThat(externalId).isEqualTo(WikibaseDatatype.ExternalId);
 	}
 
 }
