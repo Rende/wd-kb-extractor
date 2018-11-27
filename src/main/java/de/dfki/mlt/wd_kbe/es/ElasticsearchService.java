@@ -87,6 +87,39 @@ public class ElasticsearchService {
 	private boolean putMappingForEntity(IndicesAdminClient indicesAdminClient) throws IOException {
 		XContentBuilder mappingBuilder = XContentFactory.jsonBuilder().startObject()
 				.startObject(Config.getInstance().getString(Config.ENTITY_TYPE_NAME)).field("dynamic", "true")
+				.startObject("properties")
+				.startObject("type").field("type", "keyword").field("index", "true").endObject()
+				.startObject("datatype").field("type", "keyword").field("index", "true").endObject()
+				
+				.startObject("labels").field("type", "nested").startObject("properties")
+				.startObject("en").field("type", "text").endObject()
+				.startObject("de").field("type", "text").endObject()
+				.endObject().endObject()
+				
+				.startObject("lem-labels").field("type", "nested").startObject("properties")
+				.startObject("en").field("type", "text").endObject()
+				.startObject("de").field("type", "text").endObject()
+				.endObject().endObject()
+				
+				.startObject("descriptions").field("type", "nested").startObject("properties")
+				.startObject("en").field("type", "text").endObject()
+				.startObject("de").field("type", "text").endObject()
+				.endObject().endObject()
+				
+				.startObject("lem-descriptions").field("type", "nested").startObject("properties")
+				.startObject("en").field("type", "text").endObject()
+				.startObject("de").field("type", "text").endObject()
+				.endObject().endObject()
+				
+				.startObject("aliases").field("type", "nested").endObject()
+				.startObject("lem-aliases").field("type", "nested").endObject()
+				.startObject("claims").field("type", "nested").endObject()
+				
+				.startObject("sitelinks").field("type", "nested").startObject("properties")
+				.startObject("en").field("type", "keyword").endObject()
+				.startObject("de").field("type", "keyword").endObject()
+				.endObject().endObject()
+				
 				.endObject() // properties
 				.endObject() // documentType
 				.endObject();
