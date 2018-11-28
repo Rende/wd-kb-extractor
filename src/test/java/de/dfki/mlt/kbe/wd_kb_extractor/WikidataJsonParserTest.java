@@ -8,7 +8,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
-import java.util.List;
+import java.util.Set;
 
 import org.json.JSONObject;
 import org.junit.Test;
@@ -41,7 +41,7 @@ public class WikidataJsonParserTest {
 		assertThat(descriptions.get("de")).isEqualTo(
 				"nicht selbstleuchtender Himmelskörper, der sich um einen Stern bewegt und seine Umlaufbahn freigeräumt hat");
 		
-		HashMap<String, List<String>> lemAliases = (HashMap<String, List<String>>) dataAsMap.get("lem-aliases");
+		HashMap<String, Set<String>> lemAliases = (HashMap<String, Set<String>>) dataAsMap.get("lem-aliases");
 		assertThat(lemAliases.get("en")).containsExactly("body");
 		System.out.println(dataAsMap.toString());
 	}

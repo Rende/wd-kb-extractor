@@ -5,9 +5,11 @@ package de.dfki.mlt.wd_kbe;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -25,26 +27,22 @@ public class WikidataJsonParser {
 
 	public HashMap<String, Object> parseJson(JSONObject jsonObject) {
 		String type = jsonObject.getString("type");
-		WikibaseDatatype datatype = null;
-		if (!checkAttrAvailable(jsonObject, "datatype") && type.equals("item"))
-			datatype = WikibaseDatatype.Item;
-		else if (!checkAttrAvailable(jsonObject, "datatype") && type.equals("property"))
-			datatype = WikibaseDatatype.Property;
-		else if (checkAttrAvailable(jsonObject, "datatype"))
-			datatype = WikibaseDatatype.fromString(jsonObject.getString("datatype"));
+		String dataType = "item";
+		if (checkAttrAvailable(jsonObject, "datatype"))
+			dataType = jsonObject.getString("datatype");
 		String id = jsonObject.getString("id");
 		HashMap<String, String> labels = getTextMap("labels", jsonObject);
 		HashMap<String, String> lemLabels = getLemmatizedTextMap(labels);
 		HashMap<String, String> descriptions = getTextMap("descriptions", jsonObject);
 		HashMap<String, String> lemDescriptions = getLemmatizedTextMap(descriptions);
 		HashMap<String, List<String>> aliases = getAliasMap(jsonObject);
-		HashMap<String, List<String>> lemAliases = getLemmatizedAliases(aliases);
+		HashMap<String, Set<String>> lemAliases = getLemmatizedAliases(aliases);
 		List<HashMap<String, String>> claims = getClaims(jsonObject);
 		HashMap<String, String> siteLinks = getSiteLinks(jsonObject);
 
 		HashMap<String, Object> dataAsMap = new HashMap<>();
 		dataAsMap.put("type", type);
-		dataAsMap.put("datatype", datatype.getDatatype());
+		dataAsMap.put("datatype", dataType);
 		dataAsMap.put("id", id);
 		dataAsMap.put("labels", labels);
 		dataAsMap.put("lem-labels", lemLabels);
@@ -98,10 +96,10 @@ public class WikidataJsonParser {
 		return multilingualAliasMap;
 	}
 
-	private HashMap<String, List<String>> getLemmatizedAliases(HashMap<String, List<String>> aliases) {
-		HashMap<String, List<String>> lemMap = new HashMap<>();
+	private HashMap<String, Set<String>> getLemmatizedAliases(HashMap<String, List<String>> aliases) {
+		HashMap<String, Set<String>> lemMap = new HashMap<>();
 		for (Map.Entry<String, List<String>> entry : aliases.entrySet()) {
-			List<String> lemAliases = new ArrayList<String>();
+			Set<String> lemAliases = new HashSet<String>();
 			if (entry.getKey().equals("en")) {
 				for (String alias : entry.getValue()) {
 					lemAliases.add(langProcessor.lemmatizeEN(alias, true));
