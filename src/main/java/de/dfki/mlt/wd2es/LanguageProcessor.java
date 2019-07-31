@@ -1,4 +1,4 @@
-package de.dfki.mlt.wd_kbe;
+package de.dfki.mlt.wd2es;
 
 import java.io.IOException;
 import java.io.InputStream;

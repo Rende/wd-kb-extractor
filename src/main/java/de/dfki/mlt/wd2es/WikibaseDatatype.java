@@ -1,7 +1,7 @@
 /**
  * 
  */
-package de.dfki.mlt.wd_kbe;
+package de.dfki.mlt.wd2es;
 
 /**
  * @author Aydan Rende, DFKI

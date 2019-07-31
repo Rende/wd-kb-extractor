@@ -1,4 +1,4 @@
-package de.dfki.mlt.kbe.wd_kb_extractor;
+package de.dfki.mlt.wd2es;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -9,7 +9,7 @@ import java.util.List;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.junit.Test;
 
-import de.dfki.mlt.wd_kbe.LanguageProcessor;
+import de.dfki.mlt.wd2es.LanguageProcessor;
 
 public class LanguageProcessorTest {
 	LanguageProcessor langProcessor = new LanguageProcessor();
