@@ -1,4 +1,4 @@
-package de.dfki.mlt.kbe.wd_kb_extractor;
+package de.dfki.mlt.wd2es;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -10,11 +10,12 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Set;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 import org.junit.Test;
 
-import de.dfki.mlt.wd_kbe.WikibaseDatatype;
-import de.dfki.mlt.wd_kbe.WikidataJsonParser;
+import de.dfki.mlt.wd2es.WikibaseDatatype;
+import de.dfki.mlt.wd2es.WikidataJsonParser;
 
 public class WikidataJsonParserTest {
 
@@ -45,6 +46,22 @@ public class WikidataJsonParserTest {
 		assertThat(lemAliases.get("en")).containsExactly("body");
 		System.out.println(dataAsMap.toString());
 	}
+	
+	@Test
+	public void test() throws JSONException, IOException {
+		ClassLoader classLoader = getClass().getClassLoader();
+		InputStream inputStream = classLoader.getResourceAsStream("berlin.json");
+		InputStreamReader streamReader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+		BufferedReader reader = new BufferedReader(streamReader);
+		JSONObject jsonObject = new JSONObject(reader.readLine());
+		reader.close();
+		streamReader.close();
+		inputStream.close();
+		HashMap<String, Object> dataAsMap = parser.parseJson(jsonObject);
+		assertThat(dataAsMap.get("id")).isEqualTo("Q64");
+	}
+	
+	
 
 	@Test
 	public void testWikibaseDatatype() {
