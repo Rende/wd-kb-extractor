@@ -1,4 +1,4 @@
-package de.dfki.mlt.wd_kbe;
+package de.dfki.mlt.wd2es;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -15,8 +15,8 @@ import org.apache.commons.compress.compressors.CompressorStreamFactory;
 import org.apache.log4j.Logger;
 import org.json.JSONObject;
 
-import de.dfki.mlt.wd_kbe.es.ElasticsearchService;
-import de.dfki.mlt.wd_kbe.preferences.Config;
+import de.dfki.mlt.wd2es.es.ElasticsearchService;
+import de.dfki.mlt.wd2es.preferences.Config;
 
 /**
  * @author Aydan Rende, DFKI
@@ -60,7 +60,7 @@ public class App {
 		try {
 			reader.close();
 			esService.stopConnection();
-		} catch (IOException e) {
+		} catch (IOException | InterruptedException e) {
 			e.printStackTrace();
 		}
 		long elapsedTimeMillis = System.currentTimeMillis() - start;

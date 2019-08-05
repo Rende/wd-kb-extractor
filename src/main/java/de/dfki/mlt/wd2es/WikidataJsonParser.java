@@ -1,7 +1,7 @@
 /**
  * 
  */
-package de.dfki.mlt.wd_kbe;
+package de.dfki.mlt.wd2es;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +14,7 @@ import java.util.Set;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import de.dfki.mlt.wd_kbe.preferences.Config;
+import de.dfki.mlt.wd2es.preferences.Config;
 
 /**
  * @author Aydan Rende, DFKI
@@ -149,11 +149,11 @@ public class WikidataJsonParser {
 			String externalId = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), externalId);
 			break;
-		case Time:
-			JSONObject timeObj = valueObject.getJSONObject("value");
-			String time = timeObj.getString("time");
-			claim.put(datatype.getDatatype(), time);
-			break;
+//		case Time:
+//			JSONObject timeObj = valueObject.getJSONObject("value");
+//			String time = timeObj.getString("time");
+//			claim.put(datatype.getDatatype(), time);
+//			break;
 		case URL:
 			String url = valueObject.getString("value");
 			claim.put(datatype.getDatatype(), url);
