@@ -16,7 +16,7 @@
 		<apacheCommonsCompressVersion>1.18</apacheCommonsCompressVersion>
 		<json.version>20170516</json.version>
 		<slf4jVersion>1.7.10</slf4jVersion>
-		<elasticsearch.version>6.8.0</elasticsearch.version>
+		<elasticsearch.version>6.8.15</elasticsearch.version>
 		<java.version>11</java.version>
 	</properties>
 
