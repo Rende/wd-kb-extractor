@@ -13,7 +13,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<apacheCommonsCompressVersion>1.18</apacheCommonsCompressVersion>
+		<apacheCommonsCompressVersion>1.21</apacheCommonsCompressVersion>
 		<json.version>20170516</json.version>
 		<slf4jVersion>1.7.10</slf4jVersion>
 		<elasticsearch.version>6.8.0</elasticsearch.version>
